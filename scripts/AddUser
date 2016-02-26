@@ -1,0 +1,289 @@
+#!/bin/sh
+PID=0624233000
+PNAU="
+* Darkbot Users Utility *
+<**********_~_**********>
+"
+
+# to do: check errors on user input
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $0 ...\n\n\n"; sleep 1; exit 0
+}
+
+DB_SCRIPTS_PATH () {
+dirutil="scripts"
+filutil="`basename $0`"
+# check if dir is correct
+if ! echo `pwd` | grep -q "\/"$dirutil""; then
+# file is not being launched from $dirutil
+ if [ -d "$dirutil" ]; then # dir is there
+# if file is not in the correct dir
+  if [ ! "`ls "$dirutil" | grep "$filutil"`" ]; then
+  # file is not in the correct dir so move it
+clear
+echo -e "$PNAU\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory.\n"
+echo "Moving it now...."
+sleep 2
+cat > db_wrong_path << EOF[WP]
+mv -f $0 "$dirutil"/
+cd "$dirutil"/
+echo -e "\n| Your "$filutil" is now located in your "$dirutil" directory |
+            | Launch it from there when necessary |\n\n"
+sleep 4
+$0
+rm -f ../db_wrong_path
+exit 0
+EOF[WP]
+. db_wrong_path
+  else # file is in dir so just cd
+cd "$dirutil"/
+  fi
+ else # dir is not there so don't bother - tell user to move it
+clear
+echo -e "$PNAU\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory and launched from there or Darkbot's root.
+Please move it and launch it again."
+sleep 3
+ABORT
+ fi
+fi
+}
+#DB_SCRIPTS_PATH
+
+BASE_WORKDIR=.scriptutils
+TMP=$BASE_WORKDIR/._tmp/au$$
+mkdir -p $BASE_WORKDIR/._tmp/
+trap 'rm -fr $BASE_WORKDIR/._tmp* >/dev/null 2>&1' 0
+m_trap="echo -e \n\n -- `basename $0` terminated by `whoami` --\n\n"
+trap '$m_trap 1>&2; exit' 1 2 3 13 15
+
+FILEUSER="../dat/userlist.db"
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $PNAU...\n\n\n"; sleep 1; exit 0
+}
+
+USERS_HELP () {
+echo -e "$PNAU
+This utility displays, adds and removes user entries on your userlist.db file.\n
+While displaying file contents all entries are preceded by a number  (which is
+not in fact part of the files)  to help you better choose or manage each user.\n
+If the entries goes over screen size use arrow keys or PgUp/Down to scroll and
+type  Q  to quit or scroll the list to it's very end so it will  automatically
+exit and proceed to the next function. CTRL + C aborts at all times.\n
+To launch the utility write $0. For a quick user entry write: 
+$0 userid@host level Ex:  $0 *whateverid@*host.domain.net 2
+(It will add an user with access level 2 to all channels).\n
+Comments, suggestions? 
+Support: http://forum.darkbot.org\n"
+if [ -n "$insider" ]; then echo "[ Hit ENTER to continue ]"; read PTR; fi
+}
+
+# test environment
+TESTDEPEND () {
+NonFatalError () {
+echo "NON FATAL ERROR at $0 (`date`): $FiLe not detected on this system. \
+Going to simple operation mode, which means only simple USER addition will \
+be performed..." >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PNAU\nNON FATAL ERROR: $FiLe not detected on this system.
+Going to simple operation mode, which means only simple USER addition will
+be performed...\n"
+}
+if ! (type "$1" 1>/dev/null 2>&1); then
+FiLe="$1"
+NonFatalError $1
+sleep 1; unset $FiLe
+fi
+}
+TESTDEPEND "grep"; TESTDEPEND "sed"; TESTDEPEND "cut"; TESTDEPEND "cat"
+
+# dat/userlist.db
+DISPLAY_USERDB () {
+if [ ! -e "$FILEUSER" ] || [ ! -s "$FILEUSER" ]; then
+echo -e "$PNAU\nThere are no user entries present."
+LASTACTION="Unaccomplished action: no users entries to display."
+else
+echo -e "$PNAU* Local User List ** "$FILEUSER" ** \n
+| ----      If entries goes over  screen's vertical size      ---- |
+| ---- PgUp/Down or arrow keys scrolls; Q quits from the list ---- |\n
+`cat -b "$FILEUSER"`\n
+" | less -deXF
+echo "  Press ENTER to continue"; read PTR
+
+LASTACTION="Displayed Darkbot users list."
+fi 
+}
+
+CHECK_SYNTAX () {
+echo $null
+}
+
+QUICK_ADD () {
+clear
+echo "#* "$ADDuser" "$ADDlevel" 0 0" >> "$FILEUSER"
+echo "$PNAU
+Added to your "$FILEUSER" exactly this entry:
+#* "$ADDuser" "$ADDlevel" 0 0\n\n"
+}
+
+ADDUSER () {
+echo -e "\n$PNAU\n
+The format of the user@host must be *userid@*.host.isp
+Exs:   *jason@*.superlink.net      <-- dyanmic ip
+       *mtr@darkmind.eclipse.net   <-- static host
+       *darkmind@204.127.145.*     <-- unresolved host\n"
+unset NICK; unset LEVEL
+while [ -z "$NICK" ]
+do
+echo -n "Enter the *user@host of the user you'd like to add: "
+read NICK
+if [ -z "$NICK" ]; then
+echo -e "You MUST specify an user@host!\n"
+sleep 1
+fi
+done
+while [ -z "$LEVEL" ]
+do
+echo "
+What level should $NICK be added at?
+
+   1) Helper access. Database management commands.
+   2) Channel operation commands + database management.
+   3) Bot administrator. All commands.
+   "   
+echo -n "Select the level: "
+read LEVEL
+case $LEVEL in
+1)
+ LEVEL=1;;
+2)
+ LEVEL=2;;
+3)
+ LEVEL=3;;
+*)
+echo "\"$LEVEL\" is not a valid selection."
+sleep 1;;
+esac
+done
+clear
+echo -e "\n$PNAU\n
+Adding user: $NICK at level $LEVEL..."
+echo "#* $NICK $LEVEL 0 0 I need to use SETINFO" >> "$FILEUSER"
+echo -e "
+Use ADDUSER and DELUSER commands to add or delete users on-line\n
+***************************************************************\n
+Darkbot now encrypt the password in the userlist!
+Be aware  if  you  are logging private messages  the encryption
+  will not cover them,  making it  possible  to  see  passwords
+  on the logs.  So turn logs off on defines.h if you don't want
+  that to happen.
+All users added  with  this  script  will  have a password of 0
+and should set their new password on IRC by issuing the command
+/msg Darkbot pass 0 new_password.\n
+***************************************************************\n"
+echo -e "Press ENTER to continue."
+read PTR
+}
+
+DELUSER () {
+if [ -s "$FILEUSER" ]; then
+echo -n "Please enter the number corresponding to the user entry to \
+be removed: "
+read DEL_USER
+usr_num_lines="$(cat "$FILEUSER" | wc -l | tr -cd '[:alnum:]')"
+if [ ! -z "$DEL_USER" ] && [ "$DEL_USER" -le "$usr_num_lines" ]; then
+REMOVED=$(sed -n $DEL_USER"p" $FILEUSER)
+sed $DEL_USER"d" $FILEUSER > $TMP.FILEUSER
+LASTACTION="Removed: $REMOVED."
+cat $TMP.FILEUSER > $FILEUSER
+LASTACTION="Removed from your Darkbot IRC users list entry:\n "$REMOVED""
+else
+LASTACTION="Unaccomplished user entry removal - invalid input."
+fi
+else
+LASTACTION="Unaccomplished user entry removal - no users present on $FILEUSER."
+fi
+}
+
+USERS_MENU () {
+while [ "$CHOICE" != "0" ]; do
+unset userdb_status_; unset userdb_status
+if [ ! -e "$FILEUSER" ] || [ ! -s "$FILEUSER" ]; then
+userdb_status_="*"
+userdb_status=" Not available - empty file"
+fi
+#if [ "$RemoteStatus" = "off" ]; then
+#RemoteStatus1="*" # for menu
+#fi
+
+clear
+echo -e "$PNAU
+`if [ ! -z "$LASTACTION" ]; then
+echo -e "  | Last action/status:\n  |"$userdb_status_" "$LASTACTION" "; \
+else echo "Main Menu"; fi`
+
+[1]  Display my userlist.db entries. "$userdb_status_"
+[2]  Add an user to my userlist.db
+[3]  Remove an entry from my users file. "$userdb_status_"
+[4]  Check my userlist.db file for errors (fast mode). "$userdb_status_"
+[H] HELP
+[X] Exit Darkbot Users Utility.
+    "$userdb_status_" $userdb_status \n"
+echo -n "Enter your choice: "
+read CHOICE
+case $CHOICE in
+1)
+clear; DISPLAY_USERDB;;
+2)
+clear; ADDUSER;;
+3)
+clear; DISPLAY_USERDB; DELUSER;;
+4)
+if [ "$userdb_status_" != "*" ]; then
+ if [ ! -s check-integrity ]; then
+ LASTACTION="Unaccomplished file check - utility not installed."
+ else
+./check-integrity userlist -quick
+ fi
+else
+LASTACTION="Unaccomplished file check - empty file."
+fi;;
+h)
+clear; insider=y; USERS_HELP;;
+H)
+clear; USERS_HELP;;
+x)
+exit 0;;
+X)
+exit 0;;
+*)
+if [ -z $CHOICE ]; then
+echo -e "\nERROR: Playing with the ENTER key..?
+Write the number or letter corresponding to the action to take."
+sleep 2; clear
+else
+echo -e "\nERROR: '$CHOICE' is not a valid choice.
+Write the number or letter corresponding to the action to take"
+sleep 2; clear
+fi
+esac
+done
+}
+
+# start engines
+if [ "$1" = "-h" ] || [ "$1" = "-H" ] || [ "$1" = "--h" ]; then
+clear; USERS_HELP
+
+ elif [ ! -z "$1" ] && [ ! -z "$2" ]; then
+ ADDuser="$1"; ADDlevel="$2"; QUICK_ADD 
+
+ elif [ ! -e "$TMP.TESTDEPEND" ]; then USERS_MENU
+ else
+ ADDUSER
+
+fi   

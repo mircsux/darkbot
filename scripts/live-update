@@ -1,0 +1,552 @@
+#!/bin/sh
+PNLU="Darkbot Live-Update"
+PN2="
+$PNLU
+<*******_~_*******>
+"
+PID=0624233000
+
+USAGE () {
+    echo -e >&2 "\n$PNLU - Updates Darkbot program.\n
+    This program basically does the following: checks directory and file
+    integrity;  contacts Darkbot site and downloads latest  information;
+    compares  recent  information with the one installed;  updates local
+    installation if necessary or display messages from  the  developers.\n
+  Usage: <program> -[option]
+  "$0"     (with no option/flag) executes the program
+  "$0" -u  Undo last changes
+  "$0" -n  News - (latest news, usually related to updates)
+  "$0" -v  (v0, v1, v2) Verbose mode. [currently - `if [ "$verbose" = "" ]; then echo "1"; else echo "$verbose"; fi`] *
+  "$0" -h  Help information (this one)
+  "$0" -o  "$PNLU" execution ON/OFF [currently `if [ "$livupd_OnOff" != "OFF" ]; then echo "ON"; else echo "OFF"; fi`] *\n
+  * - By switching this utility OFF you'll not be able to
+      receive live updates from Darkbot's site.
+  * - Settings for verbose: 0=stealth/silent; 1=minimal messages (default,
+      no prompts if no updates present); 2=all available messages\n
+  Support: http://forum.darkbot.org\n"
+exit 1
+}
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $PNLU...\n\n\n"; sleep 1; exit 0
+}
+
+DB_SCRIPTS_PATH () {
+dirutil="scripts"
+filutil="`basename $0`"
+# check if dir is correct
+if ! echo `pwd` | grep -q "\/"$dirutil""; then
+# file is not being launched from $dirutil
+ if [ -d "$dirutil" ]; then # dir is there
+ # if file is not in the correct dir
+  if [ ! "`ls "$dirutil" | grep "$filutil"`" ]; then
+  # file is not in the correct dir so move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory.\n"
+echo "Moving it now...."
+sleep 2
+cat > db_wrong_path << EOF[WP]
+mv -f $0 "$dirutil"/
+cd "$dirutil"/
+echo -e "\n| Your "$filutil" is now located in your "$dirutil" directory |
+            | Launch it from there when necessary |\n\n"
+sleep 4
+$0
+rm -f ../db_wrong_path
+exit 0
+EOF[WP]
+. db_wrong_path
+  else # file is in dir so just cd
+cd "$dirutil"/
+  fi
+ else # dir is not there so don't bother - tell user to move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory and launched from there or Darkbot's root.
+Please move it and launch it again."
+sleep 3
+ABORT
+ fi
+fi
+}
+#DB_SCRIPTS_PATH
+
+ENVIRONMENT () {
+# set environment dirs and vars
+BASE_WORKDIR=.scriptutils
+COMMON_TMP=$BASE_WORKDIR/tmp
+mkdir -p $BASE_WORKDIR/tmp
+LUDIR=$BASE_WORKDIR/liveupdate
+TMP=$LUDIR/._tmp/lu$$
+mkdir -p $LUDIR/._tmp/
+if [ -e "$LUDIR/.l_vars" ]; then
+. "$LUDIR/.l_vars"; fi
+trap 'rm -fr $COMMON_TMP >/dev/null; rm -fr $TMP* >/dev/null; \
+rm -fr $LUDIR/._* >/dev/null 2>&1' 0
+m_trap="echo -e \n\n -- `basename $0` terminated by `whoami` --\n\n"
+trap '$m_trap 1>&2; exit' 1 2 3 13 15
+}
+
+# test dependencies
+TESTDEPEND () {
+NonFatalError () {
+echo "FATAL ERROR at $0 (`date`): $FiLe not detected \
+on this system." >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PNLU\nFATAL ERROR at $0 (`date`)\n\n
+$FiLe not detected on this system.
+It is essential for $0 to work properly."
+ABORT
+}
+if ! (type "$1" 1>/dev/null 2>&1); then
+FiLe="$1"
+NonFatalError $1
+sleep 1; unset $FiLe
+fi
+}
+TESTDEPEND_GO () {
+TESTDEPEND "grep"; TESTDEPEND "sed"; TESTDEPEND "cut"; TESTDEPEND "tar"
+TESTDEPEND "wc"; TESTDEPEND "cat"; TESTDEPEND "expr"; TESTDEPEND "head"
+
+}
+TESTDEPEND_GO
+
+# test dependencies which can have optional programs and set vars for those.
+TESTDEPEND_SUBST () {
+# test lynx/wget
+if (type "lynx" 1>/dev/null 2>&1); then
+dld_prg="lynx"
+ else
+ if (type "wget" 1>/dev/null 2>&1); then
+ dld_prg="wget"
+ fi
+fi
+if [ -z "$dld_prg" ]; then
+echo -e "FATAL ERROR at $0 (`date`): lynx and wget not detected \
+on this system. One it's necessary for this utility to work \
+properly" >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PNLU\nFATAL ERROR at $0 (`date`)\n\n
+Either lynx or wget are essential for $0 to work properly.
+None of those programs were found on this system"
+ABORT
+fi
+}
+TESTDEPEND_SUBST
+
+YESNO() {
+# usage -- YESNO "question..?"
+# if  [ "$YESNO_ANSWER" = "n" -o "$YESNO_ANSWER" = "N" ]; then echo no; fi
+# y/n function - Returns: 0 (true) = yes; 1 (false) = no
+YESNO_DFLT=y # Set default: -y = yes; -n = no; otherwise no default
+# options & args
+for YESNO_OPT do
+case "$YESNO_OPT" in
+  -[yY]*) YESNO_DFLT='y' ;;
+  -[nN]*) YESNO_DFLT='n' ;;
+  --) shift; break ;;
+  -*) ;;
+   *) break
+esac
+shift
+done
+YESNO_PROMPT="$*"
+# get the response
+while : ; do
+echo -n "$YESNO_PROMPT (y/n)?${YESNO_DFLT:+ [$YESNO_DFLT]} " >&2
+read YESNO_ANSWER YESNO_JUNK
+: ${YESNO_ANSWER:=$YESNO_DFLT}
+case "$YESNO_ANSWER" in
+[yY]*)
+#echo "YES ANSWER"
+return 0
+;;
+[nN]*)
+#echo "NO ANSWER"
+return 1
+;;
+*)
+clear
+echo -e "$PN2\n\nERROR: invalid entry!\n
+    PLEASE press ENTER or type Y (Yes) to proceed or N (No) or CTRL+C to abort.
+    ..." >&2
+esac
+done
+return
+}
+
+###### LOGS ######
+LOG_VARS () {
+echo "livupd_OnOff=\"$livupd_OnOff\"" > $LUDIR/.l_vars
+echo "WarnOnOff=\"$WarnOnOff\"" >> $LUDIR/.l_vars
+echo "verbose=\"$verbose\"" >> $LUDIR/.l_vars
+echo "l_livupdID=\"$livupdID\"" >> $LUDIR/.l_vars
+echo "loc_Revision=\"$Revision\"" >> $LUDIR/.l_vars
+echo "prev_Revision=\"$l_version\"" >> $LUDIR/.l_vars
+echo "LastUpdate=\"`date`\"" >> $LUDIR/.l_vars
+echo "l_db_dir=\"$l_db_dir\"" >> $LUDIR/.l_vars
+}
+LOG_NEWS () {
+if [ -z "$TMP-livupd" ]; then
+echo "No NEWS available from last update." > $LUDIR/.l_news
+else
+. $TMP-livupd -n > $LUDIR/.l_news
+fi
+}
+
+INTEGRITY () {
+if [ -d "../source" ]; then
+ if [ "`ls -l ../source 2>/dev/null | grep '[ch]$'`" != "" ]; then
+ l_sourceDir="../source"; dat="../dat"; docs="../docs"; scripts="../scripts"
+ l_db_dir=`pwd | cut -d/ -f4`
+ else
+ clear
+ echo -e "$PN2\n\nWARNING!!!!\n\n No source files found!\n"
+ ABORT
+ fi
+else
+ if [ -e "../darkbot.c" ]; then 
+ l_sourceDir=".."; dat="../dat"; docs="../docs"; scripts="../scripts"
+ l_db_dir=`pwd | cut -d/ -f4`
+ else
+ clear
+ echo -e "$PN2\n\nWARNING!!!!\n\n No source files found!\n"
+ ABORT
+ fi
+fi #source exists
+}
+
+REMOTE1 () {
+# download command line
+DLD_PRG_COMMLINE () {
+updater="http://updater.darkbot.info"
+#updater="http://192.168.1.10/ongoing/.livupd"
+if [ "$dld_prg" = "lynx" ]; then
+lynx -source "$updater" > $TMP-livupd
+else
+wget -qO $TMP-livupd "$updater"
+fi
+}
+#get remote updater
+if [ "$verbose" = "2" ]; then clear
+echo -e "$PN2\n
+     Contacting Darkbot site.\n\n
+     Please wait..."
+sleep 3
+else 1>&2; fi
+trymax="3"; trycount="0"
+while [ "$trycount" != "$trymax" ] && [ ! -s $TMP-livupd ]; do
+trycount=`expr $trycount + 1`
+########################################################
+DLD_PRG_COMMLINE
+#cp -f .livupd $TMP-livupd # debug only
+done
+if [ "$verbose" = "2" ]; then clear
+echo -e "$PN2\n
+     Connection with Darkbot site established.
+     Retrieving the most recent information...\n
+     Please wait"
+sleep 3
+else 1>&2
+fi
+}
+
+CHECK_PREMADE_DBS () {
+# check for pre-made databases
+if [ "$check_pre_made_dbs" != "complete" ]; then
+./download-databases -s
+if [ -s $COMMON_TMP/.dbs_available ]; then
+rm -f $COMMON_TMP/.dbs_available
+clear
+echo -e "$PN2\n
+Detected pre-made databases available for download!\n\n"
+YESNO "    Run pre-made databases download utility?
+
+[ ENTER or Y (Yes); N (No) or CTRL+C to abort ]"
+if  [ "$YESNO_ANSWER" = "n" -o "$YESNO_ANSWER" = "N" ]; then 
+clear
+echo -e "$PN2\nIf you want to avoid $0 detecting available databases
+select 'I' on ./download-databases to ignore them.\n
+Bypassing pre-made databases download utility...\n
+[ Hit ENTER to continue ]\n"
+read PTR
+else
+echo -e "\nPlease wait..."; sleep 1
+ ./download-databases
+echo -e "Pre-made databases check complete!\n\n"
+sleep 3
+check_pre_made_dbs=complete
+fi
+fi
+fi
+} # end of check/pre-made databases
+
+REMOTE2 () { 
+if [ "$verbose" = "2" ]; then clear
+echo -e "$PN2\n
+     Information with latest updates received.
+     Comparing local information with the current one from the site...\n
+     Please wait"
+sleep 3
+else 1>&2
+fi
+# change local id vars so remote ones will not colide
+# check remote vars
+. $TMP-livupd -cvars 2>/dev/null
+if [ ! -z "$livupdID" ]; then
+# remote file id not null so proceed
+ if [ "$l_livupdID" != "$livupdID" ]; then
+ # local file id != same as remote one so there's something new
+  if [ ! -z "$loc_Revision" ]; then
+   if [ "$loc_Revision" != "$Revision" ]; then
+   # local revision != same as remote so there is a new program release
+    if [ "$verbose" != "0" ]; then clear
+    echo -e "$PN2\n
+    New Release Update detected!\n
+    You have Darkbot $loc_Revision installed.
+    Most recent release is Darkbot $Revision.\n\n"
+    YESNO "    Read information about it?
+    [ENTER or Y (Yes) to read it or N (No) not to. CTRL+C aborts]"
+    if [ "$YESNO_ANSWER" != "n" ]; then 
+    if [ "$YESNO_ANSWER" != "N" ]; then
+    # display news
+    . $TMP-livupd -n
+      YESNO "
+..............
+      Proceed?
+      
+      [ ENTER or Y (Yes) to proceed; N (No) or CTRL+C to abort ]"
+      if  [ "$YESNO_ANSWER" = "n" -o "$YESNO_ANSWER" = "N" ]; then ABORT; fi
+    fi
+    fi # yes/no answer is no
+     else 1>&2; fi # verbose = 0
+    # run remote updater
+    . $TMP-livupd -s
+  else
+   if [ "$loc_Revision" = "$Revision" ]; then
+    if [ "$verbose" != "0" ]; then clear; echo -e "$PN2\n
+    You are running Darkbot "$Revision", latest release."
+    sleep 1
+    else 1>&2; fi
+   fi
+  # local revision is the same as remote but still there's something new
+  # first display news then run optional updater; this optional script can
+  # also have small updates or non source ones, like new database
+   if [ "$verbose" != "0" ]; then #clear
+   echo -e "\n   There are some NEWS from Darkbot's developers
+   regarding your Darkbot $loc_Revision!\n"
+   YESNO "   Read it?
+   [ ENTER or Y (Yes) to proceed; N (No) or CTRL+C to abort ]"
+   if  [ "$YESNO_ANSWER" = "n" -o "$YESNO_ANSWER" = "N" ]; then ABORT; fi
+   else 1>&2; fi # verbose = 0
+  . $TMP-livupd -n
+  . $TMP-livupd -o
+  LOG_VARS
+  LOG_NEWS
+   fi 
+     else # missing local revision
+      if [ "$verbose" = "2" ]; then clear
+      echo -e "$PN2\n
+      Unable to obtain local revision ID
+      Most probably due to misplaced or adulterated source files.\n"
+      ABORT
+      else 1>&2; fi
+     fi
+ else # files ids are the same
+  if [ "$verbose" = "2" ]; then clear
+  echo -e "$PN2\n
+       No news or updates available!\n\n
+       Leaving $PNLU..."
+       echo -e "\n\n"
+  sleep 3
+  else 1>&2; fi
+  exit 0
+ fi
+else # no remote file id present so we didn't get the file or arrived corrupted
+if [ "$verbose" = "2" ]; then clear
+     echo -e "$PN2\n
+     Unable to compare information at this time.
+     most probably due to misplaced source files or adulterated version.\n
+     Leaving $0...\n"
+sleep 3
+else 1>&2; fi
+exit 0
+fi
+}
+
+###### STARTING & LIVE-UPDATE SETTINGS ######
+VERBOSE () {
+if [ ! -z "$1" ]; then # means choice is 0, 1 or 2
+if [ "$verbose" != "$1" ]; then
+verbose="$1"
+LOG_VARS
+fi
+clear
+echo -e "$PN2\n\n Switch value on $PNLU for verbose mode is now [\
+`if [ "$verbose" = "" ]; then echo "1"; else echo "$verbose"; fi`] \n"
+if [ "$verbose" = "0" ]; then
+ echo -e " which means, NO $PNLU program messages will be shown.
+ Recommended setting is 1 (minimal display of messages).\n
+ NOTE: have in mind, by deactivating \""$PNLU"\" functioning
+       messages you'd might miss important information!\n"
+fi
+if [ "$verbose" = "1" ]; then
+ echo -e " which means, MINIMAL but essential program messages will be shown.\n"
+fi
+if [ "$verbose" = "2" ]; then
+ echo -e " which means, ALL program messages will be shown.\n"
+fi
+else clear # choice was v or V (var $1 null)
+echo -e "$PN2\n\n $PNLU verbose mode is currently on value [\
+`if [ "$verbose" = "" ]; then echo "1"; else echo "$verbose"; fi`] \n"
+fi
+echo -e " Possible options/values are:
+ $0 -v   Displays verbose status.
+ $0 -v0  Turns all messages off.  (stealth mode - Not recommendable)
+ $0 -v1  Runs with essential messages.      ( default - Recommended)
+ $0 -v2  Runs with all available program messages.
+               -------------------------------------------------
+ * option 0 will not run the engine on the background and not all messages will
+   be hidden, specially the ones involving the actual update process,   because
+   we want you to know what's going into your computer.\n\n"
+exit 1
+}
+
+LIVUPDONOFF () {
+ if [ "$livupd_OnOff" = "ON" ] || [ -z "$livupd_OnOff" ]; then
+ livupd_OnOff=OFF
+ else
+ livupd_OnOff=ON
+ fi
+ LOG_VARS
+ clear
+ echo -e "$PN2\n\nON/OFF program switch is now turned "$livupd_OnOff".\n"
+ if [ "$livupd_OnOff" = "OFF" ]; then
+   echo -e "NOTE: have in mind, by deactivating \""$PNLU"\"
+       you'll not be able to receive live updates!\n\n"
+ fi
+ if [ "$livupd_OnOff" = "ON" ]; then
+   echo -e "     To run "$PNLU" just type $0\n\n"
+ fi
+ exit 1
+}       
+WARNONOFF () {
+ if [ "$WarnOnOff" = "ON" ] || [ -z "$WarnOnOff" ]; then
+  WarnOnOff=OFF
+  else 
+  WarnOnOff=ON
+  fi
+  LOG_VARS
+  clear
+  echo -e "$PN2\n\nON/OFF switch WARNING message is now turned "$WarnOnOff"\n"
+ if [ "$WarnOnOff" = "OFF" ]; then
+   echo -e "which means you can't receive live updates from Darkbot's site.\n
+     **** It's recommendable reactivating it by writing $0 -o
+     * You can see a short program usage help by typing $0 -h
+     * If you don't want to see this warning again type $0 -W
+     **************************************************\n\n"
+ fi
+exit 1
+}
+
+#__________________________________________________________________
+### START ENGINE ###
+ENVIRONMENT
+# switches
+if [ "$1" = "-n" ] || [ "$1" = "-N" ]; then
+ if [ -e "$LUDIR/.l_news" ]; then clear
+ cat $LUDIR/.l_news | less -de; exit 1
+ else clear
+ echo -e "$PN2\n\n     Sorry, no news available.\n\n"
+ exit 1
+ fi
+fi
+
+if [ "$1" = "-u" ] || [ "$1" = "-U" ]; then
+ if [ -e "$LUDIR/.l_undo" ]; then
+ clear
+ echo -e "$PN2\n\n     This operation will restore your Darkbot as it was \
+ before latest
+     update ($LastUpdate - Darkbot $prev_Revision -> $loc_Revision).
+     All $PNLU settings will return to it's defaults.\n"
+     YESNO "     Are you sure you want to reverse your changes?
+     [ ENTER or Y (Yes) to proceed; N (No) or CTRL+C to abort ]"
+     if  [ "$YESNO_ANSWER" = "n" -o "$YESNO_ANSWER" = "N" ]; then ABORT; fi
+     tar -zxf $LUDIR/back.tar.gz -C $LUDIR
+  . $LUDIR/.l_undo
+  clear
+  echo -e "$PN2\n\n     Changes reversed to their previous state.\n
+     $PNLU returned to it's default mode.\n\n"
+  rm -fr $LUDIR
+  exit 1
+ else clear
+ echo -e "$PN2\n\n     Sorry, no UNDO CHANGES available.\n\n"
+ if [ ! -z "$loc_Revision" ]; then
+ echo -e "     This utility was last used on $LastUpdate
+     during Darkbot $prev_Revision to $loc_Revision live update.
+     To see information about last update type $0 -n\n\n"; fi
+ exit 1
+ fi
+fi
+
+if [ "$1" = "-v" ] || [ "$1" = "-V" ]; then VERBOSE; fi
+if [ "$1" = "-v0" ]; then VERBOSE 0; fi
+if [ "$1" = "-v1" ]; then VERBOSE 1; fi
+if [ "$1" = "-v2" ]; then VERBOSE 2; fi
+if [ "$1" = "-h" ] || [ "$1" = "--h" ]; then clear; USAGE; fi
+if [ "$1" = "-o" ] || [ "$1" = "-O" ]; then LIVUPDONOFF; fi
+if [ "$1" = "-w" ] || [ "$1" = "-W" ]; then WARNONOFF; fi
+
+if [ -z "$livupd_OnOff" ] || [ "$livupd_OnOff" != "OFF" ]; then
+# if no vars present this is a first time
+ if [ ! -e "$LUDIR/.l_vars" ]; then
+ clear
+ echo -e "$PN2\n
+    Welcome to $PNLU engine.
+    Looks like this is your first time running this utility
+    (or you've reversed to it's defaults any previous changes).\n
+    For help on $PNLU options exit and type $0 -h
+    or press ENTER to proceed with update process.
+    If there are no updates available this utility will exit with
+    no messages.\n"
+ YESNO "    Proceed?
+    [ ENTER or Y (Yes) to proceed; N (No) or CTRL+C to exit ]"
+ if  [ "$YESNO_ANSWER" = "n" -o "$YESNO_ANSWER" = "N" ]; then ABORT; fi
+ fi
+INTEGRITY
+ if [ ! -z "$l_sourceDir" ]; then
+ REMOTE1
+ if [ -s download-databases ]; then CHECK_PREMADE_DBS; fi
+ fi
+
+ # check if update file came
+ if [ ! "`grep livupdID $TMP-livupd 2>/dev/null`" ]; then
+   if [ "$verbose" = "2" ]; then clear
+   echo -e "$PN2\n\nUnable to retrieve update information.
+   Leaving....\n\n"
+   else 1>&2
+   fi
+ exit 0
+ fi
+
+if [ ! -z "$TMP-livupd" ]; then REMOTE2
+fi
+if [ "$remote_end" = "end" ]; then LOG_VARS; LOG_NEWS
+exit 0
+fi
+  
+else # program is off by user choice so.. exit with a warning
+ if [ -z "$WarnOnOff" ] || [ "$WarnOnOff" != "OFF" ]; then
+ clear
+ echo -e "$PN2\n\nWARNING\n
+ $PNLU is inactive (OFF)
+ which means you can't receive live updates from Darkbot's site.\n
+  **** It's recommendable reactivating it by writing $0 -o
+  * You can see a short program usage help by typing $0 -h
+  * If you don't want to see this warning again type $0 -W 
+  **************************************************\n\n"
+ fi
+fi 
+exit 0

@@ -1,0 +1,524 @@
+	##################################################################################
+
+	Darkbot, Talking Robot - Copyright (c) 2003 Darkbot Project
+
+	Welcome to the Darkbot install file. This will be a step by step guide to 
+	installing your Darkbot, so read it all, before you do anything. 
+
+	If you have not read this file and come into the help channel on the  Darkbot
+	Network, we will know, and it might mean you will be helped last. 
+
+	With that out of the way, if you have done every thing in this file and still 
+	can not get your Darkbot running, feel free to join #Darkbot on the Darkbot
+	Network, and we will do our best to help you.  Keep in mind that we are not 
+	there to set up and run your bot for you.  One or two questions about commands 
+	are okay, but if you have to ask about every command, then maybe you shouldn't 
+	be running a bot. 
+
+	Note: There are many builds of Linux out in the world today. The coders try and 
+	build Darkbot to be run on as many as possible but some times it doesn't work 
+	out that way.  If there is a problem with compiling Darkbot on your Linux build,
+	please let us know. 
+
+	Help can be found for Darkbot either by irc, or from our web page. 
+
+	Irc: Servers irc.darkbot.org, eu.undernet.org, us.undernet.org
+	Channel: #darkbot
+
+	Web page: http://www.darkbot.org Forum: http://forum.darkbot.org
+
+	We do not support any Darkbot code that has been downloaded from any site other 
+	then the official one.  Any code that has been modified by anyone other than an 
+	official Darkbot coder, will also not be supported. (If you have a good idea 
+	for a modification, please share it with us. If it makes the final code, you 
+	will be given credit.)
+
+	###############################################################
+
+	Follow the order of events described here, and you'll have your Darkbot up and 
+	running!
+
+	DOWNLOAD
+	Download to your shell compressed archive from
+	http://www.darkbot.org/downloads.html
+
+	INSTALLATION 
+	De-compress the downloaded archive (tar -zxvf *.tar.gz)
+
+	tar -zxvf darkbot-6f6.tar.gz
+
+	- Change to the newly created directory
+
+	Note: For older Darkbots, this dir will be (darkbot6f6), for new or beta builds,
+	it will be (darkbot)
+
+	cd darkbot6f6 or cd darkbot
+
+	BASIC CONFIGURATION
+
+	Starting configuration process. 
+	./configure
+
+	You do need to run ./configure - Darkbot does not build itself into your system 
+	without that step. 
+	We are not going into detail and repeating the instructions shown when you run 
+	./configure, because they are self-explanatory. 
+	Most of the doubts and frequently asked questions on that, only rely on Linux, 
+	and not Darkbot matters. For instance, the default text editor is pico, but you 
+	can use any other text-mode editor that comes with your distribution, like vi, 
+	less, Emacs, XEmacs, NEdit or others. "That stripping thing" on the end of 
+	compilation process - it shrinks a little bit the size of the executable, and 
+	some extra and non necessary codes are removed; makes no difference on Darkbot's 
+	performance, so do whatever you want with it.
+
+	At any point during the configuration process you can abort (by pressing CTRL + 
+	C or other way your system or editor allows) and start again. 
+	If for some reason you have an error and the compilation process is not 
+	completed, correct the error and after saving your changes type 'make'. 
+	If you want to run Darkbot after answering 'no' to run on the end of 
+	compilation process just type './darkbot'.
+
+	Have this in mind: Darkbot should work if you follow ./configure instructions. 
+	So, if isn't working, try again and read those carefully.
+	If you want to personalize more or change specific items to your Darkbot after 
+	./configure you have two choices: run 'configure' again or you can edit the 
+	files. All files on darkbot\dat\ are offline hand editable and all have basic 
+	syntax examples in it. Do not leave empty lines and disconnect your Darkbot from 
+	IRC before editing configuration files.
+
+	OFFLINE CONFIGURATION SETTINGS 
+	(follow the samples in the files and don't leave any empty lines)
+	How to do it.
+
+	[userlist.db] 
+	Adding users to Darkbot's user list.
+	Open darkbot\dat\userlist.db and check this sample line: '#* 
+	*user@*.yourhostmask.com 3 0 mypass I need to use SETINFO' with your 
+	information.
+
+	#* = (with asterisk) adds user to all channels; #channel1 adds user to channel1 
+	*user@*.yourhostmask.com = is the mask of the user to add 
+
+	3 = user level -- You should always be Darkbot's administrator (level 3) on your 
+	darkbot\dat\userlist.db [Level 3 is the highest, allows you to control all 
+	Darkbot functions; level 2 gives access to channel operation commands plus level 
+	1 commands; level 1 only permits to manage Darkbot's database - it's the so 
+	called helper level; all other commands are public, meaning everyone can perform 
+	them].
+
+	0 = number of times Darkbot saw that user on the default channel 
+
+	mypass = If you want to define a password for you can do it replacing 'mypass' 
+	with user's one. 
+
+	'I need to use SETINFO' = is a message Darkbot sends to newly registered users 
+	in order to remind them to define or not it's greeting message. Leave it as is 
+	or write, for example, "Hi Boss ;)". You can also replace 'setinfo' message with 
+	a 0 (zero) to disable it. 
+
+	(You can add more users from online with the !adduser command or delete with the 
+	!deluser command) 
+
+	[setup.ini]
+	Open darkbot\dat\setup.ini.
+	This is the file you need to edit to setup your Darkbot's nickname, username, 
+	realname, default channel to join, virtual host, command character prefix and 
+	seen users switch. Change the contents of the file as you need overwriting 
+	existing parameters. Do not remove anything before '='. Do not leave extra 
+	spaces or lines. Do not use carriage returns. Save and exit.
+
+	Obs.:
+	'VHOST= ' to set your virtual host (must be a registered domain pointed to the 
+	same computer as Darkbot and configured for IRC)
+
+	'CHAN=#ChannelHere' sets Darkbot's default channel. If you want to add 
+	more channels use perform.ini.
+
+	'CMDCHAR= ' to set Darkbot's command prefix to trigger most of it's commands.
+
+	'NICK='This is the nick your bot will have when it joins irc, default is Darkbot
+
+	'USERID='This will be the name before the @ in the bots user host
+
+	'REALNAME=' This will be the info after your bots user host
+
+	'AUTOTOPIC='Automatically cycles channel's topic every 30 minutes. To turn 
+	autotopic off, use "0" (zero) in place of the topic.
+
+	'SEEN='Turns  seen  on  or off. 1= on, 0= off
+
+	[perform.ini] 
+	Having Darkbot performing IRC commands automatically.
+	You can make Darkbot perform a list of raw IRC commands when it connects to the 
+	server (as mIRC's perform function). You can make your Darkbot join other 
+	channels, perform mode changes, login to channel services with it. Depending on 
+	each network, your IRC knowledge and your imagination depends the commands you can 
+        add.
+	Open and edit darkbot\dat\perform.ini. Write one command per line.
+
+	Examples:
+	- to join an additional channel besides default one
+	JOIN #Channel_here
+
+	- to set modes
+	MODE #Channel +nt
+
+	- to set a topic as soon as enters a channel
+	TOPIC #Channel_here :this is a test topic
+
+	- to send a message to you as soon as it connects
+	PRIVMSG YourNick :hey... I'm here
+
+	- to send a notice to you
+	NOTICE YourNick :be ready to feed me :p
+
+	- to authenticate on Superchat.org
+	PRIVMSG serv@superchat.org :login #darkbot blahblah
+
+	- to authenticate on Undernet's CService
+	PRIVMSG x@channels.undernet.org :login username password
+
+	- to have bot X giving op to your Darkbot
+	PRIVMSG X :op #channel_here username
+
+	- to login and get Ops on a eggdrop
+	PRIVMSG Eggdrop_nick :op password #channel
+
+	General rule to send raw IRC messages is preceding the message with ':'. However 
+	there are situations where you might be able to perform commands without it.
+
+	- to identity your Darkbot on some servers
+	NICKSERV IDENTIFY darkbot_password
+
+	- for some channel services
+	CHANSERV OP #channel_here Darkbot
+
+	[deop.ini] 
+	Changing Darkbot's behavior when is not Op.
+	You can have your Darkbot perform commands when it loses channel Op like messaging 
+	you, automatically asking Op to the channel service or another bot or Ops. Open 
+	and edit darkbot\dat\deop.ini. Check the examples below. Leave this file blank 
+	if you want it to do nothing. (see also examples used on perform.ini)
+
+	PRIVMSG #channel_here :Hmm, wish I had ops...
+
+	NOTICE Your_nick : I lost Ops :(
+
+	PRIVMSG x@channels.undernet.org :login username password
+
+	PRIVMSG X :op username
+
+	PRIVMSG serv@superchat.org :login #darkbot blahblah
+
+	chanserv op #channel_here Darkbot
+
+	PRIVMSG Eggdrop_nick :op password #channel
+
+	[servers.ini] 
+	Changing or adding servers to Darkbot.
+	By default Darkbot connects to one of UnderNets servers
+	us.undernet.org 6667
+	eu.undernet.org 6667
+
+	Open and edit darkbot\dat\servers.ini. You can list as many servers as you want, 
+	so if it's disconnected, it'll switch to others. Do not leave empty lines. Do 
+	not mix servers, like us.undernet.org and dal.net. Save and exit.
+
+	GOING ONLINE
+
+	Write on your shell './darkbot' in order to have it connect to the Internet.
+	Wait a little bit and if you didn't change servers.ini in order to use another 
+	network, Darkbot will join channel #Darkbot at Undernet.org. (To join this 
+	network type in your IRC client /server us.undernet.org and /join #darkbot)
+	If you did change the servers.ini and the CHAN= in the setup.ini then Darkbot 
+	will join that server and channel that you set there. 
+	If another nick Darkbot is already there, your Darkbot will take nick Darkbot0, 
+	Darkbot1 etc. (You can see which one is yours by doing /whois and looking at the 
+	output info. It will have the same hostmask as yours or the machine where it is 
+	running).
+
+	You can have Darkbot jump to another server by performing !JUMP command.
+
+	Setting or changing the password to access Darkbot (25 characters maximum). If 
+	you didn't change 'mypass' on userlist.db write
+	/msg Darkbot pass mypass my_new_pass.
+
+	After changing it you'll receive a notice like this:
+	-- Password for youruserid@yourhostmask.com has been updated.
+
+	Login to Darkbot:
+	Now you have to authenticate yourself to Darkbot to perform some commands. To do 
+	so type
+	/msg Darkbot LOGIN YourPass
+	You'll receive a notice like this from Darkbot:
+	-- Verified: #darkbot[3]
+
+	Notes: have in mind - for security reasons - if you or Darkbot leaves the channel 
+	you have to login again when returning.
+
+	ONLINE ADDITIONAL CONFIGURATION SETTINGS
+
+	Set greeting message
+
+	If you want Darkbot to greet you when you join the channel and you didn't 
+	already edit it in the userlist.db 'I need to use SETINFO' type, for example,
+	!SETINFO I think I know you ;P
+
+	(!setinfo 0 disables the function; typing !setinfo without any parameters gives 
+	you some help about the command)
+	Next time you join the channel Darkbot will greet you with that mesage.
+
+	Set Darkbot's nick name
+	In order to have Darkbot with a nick you like, you only need to type,
+	!SETNICK MyDarkbot
+
+	Set userid
+	If you want to change Darkbot's user id type,
+	!SETUSER newuserid
+
+	Set default channel
+	To instruct Darkbot what channel must be the default one, type,
+	!SETCHAN #YourChannel
+
+	Set Command Character
+	If you want to change the default command prefix [ ! ] issued to Darkbot to 
+	execute some commands and, for instance, you want to use command character '>' 
+	type,
+	!SETCHAR > 
+
+	Set auto topic
+	Auto-topic function makes Darkbot repeat channel's topic you specify every 30 
+	seconds (default). To do so type, for example,
+	!AUTOTOPIC Visit http://www.darkbot.org for complete Darkbot information.
+
+	Set virtual host
+	If you want to set a virtual host to Darkbot type (must be a registered domain 
+	pointed to the same computer as Darkbot and configured for IRC)
+	!VHOST your.vhost.com
+
+	--**-- 
+	The remaining files within the \dat folder can also been edited offline. info2.db 
+	(stores topics and corresponding replies), randomstuff.ini (stores random 
+	replies), seen.db (stores the list of users seen by Darkbot) and perbans.db 
+	(stores permanent bans)
+
+	START ADDING TOPICS 
+
+	As all commands in this document YOU MUST LOGIN (/msg BotNick LOGIN yourpass) 
+	before you can execute any Darkbot's command)! Also, you need to read the complete 
+	command list document where you find a more detailed explanation about each one.
+	This is only a superficial help file to get you to add, modify and delete basic 
+        topic replies.
+
+	Login to your Darkbot
+	Type:
+	YourBotNick ADD hello hello N~
+	(now type 'hello' and Darkbot will reply 'Hello YourNick')
+
+	Type:
+	YourBotNick MODIFY hello Hi N~, thanks for coming to C~ 
+	(now type 'hello' and the Darkbot's reply was modified to 'Hello YourNick, 
+	thanks for coming to #YourChannel')
+
+	Type:
+	YourBotNick DELETE hello
+	(Darkbot deletes the topic 'hello'. If you type hello he don't answer)
+
+	YOU MUST READ
+
+	Darkbots Commands List and all help documents. This is only a short 
+	file to get your Darkbot up and running. 
+	------------------ " -------------------
+
+	OTHER FILES
+
+	info2.db - This is the information your darkbot learns and replys to when asked 
+	questions. It's the main database.
+	A topic can be more than one word, but will be separated with +'s instead of 
+	spaces. If a data starts with a +, the reply will be in the form of an action. 
+	If the data starts with a -, the output can be stacked using PIPES and you can 
+	use raw data, to do things such as NOTICE, PRIVMSG and even KICK. The symbol "^" 
+	is the $nickname variable. The ^R (reverse control char) is the $chan variable. 
+	While this may seem a bit confusing... don't worry about it, It's very simple, 
+	just hard to explain in words without SHOWING you the bot in action.
+
+	randomstuff.ini - List of random things to say. You can add more online by 
+	saying: BotNick RANDOMSTUFF information to add.
+
+	permbans.db - This is a text file, just a .db (database) file name extension. 
+	Use the !PERMBAN and !DELBAN commands from on-line to add\delete.
+
+	seen.db - This is a list of people your bot has seen. You can access it with 
+	!SEEN , seen's over one week old are deleted.
+
+	SOMETHING WRONG
+	All suggestions here are proved to work on several linux flavors and several 
+	machines. Although we believe there are no side effects to your computer or to 
+	yourself in doing it, follow them at your own risk. Do not blame your Darkbot in 
+	case he decides not answering you.
+
+	(A) - Before proceed:
+	- Turn off your Darkbot by issuing command 'kill' (do ps x to see Darkbot's 
+	process id and kill -9 pidNumber or killall darkbot)
+
+	(B) - Always make a backup of the file you want to work with before any change 
+	or make a copy of Darkbot's folder using command 'cp'. Leave the file or 'Copy 
+	of darkbot' as a safe backup in case you need to restore a file, you already have 
+        it.
+
+	(C) - Use linux text editors if you can to edit Darkbot files. If you can't use 
+	another text editor; the one you are using might be adding hidden codes or 
+	changing the format of the original files. Check if file extension is the same. 
+	For instance, if you are using Windows Notepad and file userlist.db extension 
+	after editing and saving is userlist.db.txt rename it to userlist.db.
+
+	(D) - Do not leave empty lines on the middle of others or on the end of the 
+	text.
+
+	============================
+
+	A Few F.A.Q's
+
+	I can't read and edit some files that have kind of strange black squares. Is 
+	that Code Black virus? 
+	-Darkbot is done in a way that is very safe in all aspects not only on IRC but 
+	also on it's invulnerability to virus or trojans. So no, it's not any virus or 
+	nothing like that. Those are codes left by your editor when tabs and carriage 
+	returns are used. Looks like you are editing those files in Windows so use 
+	Wordpad. You can also use Notepad but in some files you need to reconstruct the 
+	lines in a way of having each command line on a separated line. Never leave 
+	empty lines.
+
+	My Darkbot don't connect at all.
+
+	- Run Darkbot with minimal configuration (no hand editing at all) to see if 
+	connects to Undernet.org and goes to channel #darkbot. If you go there, Darkbot 
+	should react with a short answer if you write it's nick.
+
+	- if not, install Darkbot again from the original compressed file. If problem 
+	persists your original compressed Darkbot file or some of it's contents might be 
+	corrupted so download it again from Darkbot's official site.
+
+	My Darkbot don't recognizes me when I /msg Darkbot login mypassword.
+
+	- After following procedures on (A) add yourself to darkbot\dat\userlist.db - 
+	Save and exit - Connect Darkbot again and try to /msg Darkbot login 
+	yourpassword.
+
+	- if Darkbot notices you as accepting your login, write on the public window 
+	'Darkbot add test 123'. Darkbot should answer 'Okay'. Write 'test'. Darkbot 
+	should answer '123'.
+
+	- if not, follow procedures on A, B, C and D.
+
+	- if Darkbot is still not accepting your login 
+	- Open your darkbot\dat\userlist.db
+	On the sample line '*user@*.yourhostmask.com 3 0 mypass I need to use SETINFO' 
+	You only need to overwrite *user@*.yourhostmask.com and 'mypass' in order to get 
+	your Darkbot online and access to it.
+	The mask *user@*.yourhostmask.com should match the one you have when you connect 
+	to the same network where your Darkbot is (do /whois to_ yournick to compare 
+	it). You must use a wildcard * on all portions of the mask that change in every 
+	time you connect. General concept is you should substitute all changing items on 
+	your mask with an asterisk (*).
+
+	- While connected do /whois YourNickHere and check the first line of the output. 
+
+	On the userid/ident side (the one on the left of @) you must use one * right 
+	before of it on your userlist.db entry. If that ident has a leading ~ don't use 
+	it. ~myident@blah.blah.blah or myident@blah.blah.blah should go to userlist as 
+	*myident@blah.blah.blah. If your ident changes at times (some characters are 
+	missing like this ~myid@blah.blah.blah) on the right side, right before @, use 
+	the wildcard on both ends, i.e., *myid*@blah.blah.blah.
+	On the IP address side, right of @, compare what you have with the examples 
+	bellow.
+
+	Static IPs (never changes):
+
+	- if your IP looks like this: myident@myhost123.mydomain.com 
+	you shoud add as *myident@myhost123.mydomain.com
+
+	- if your IP looks like this: myident@11.222.12.123 
+	you should add as *myident@11.222.12.123
+
+	Dynamic IPs (changes with each connection):
+
+	- if your IP looks like this: myident@myhost123.mydomain.com and the portion 
+	that changes for every connection is '123'
+	you'll add *myident@myhost*.mydomain.com
+
+	- if your IP looks like this: myident@11.222.12.123 if the portion that changes 
+	for every connection is 12.123 you'll add *myident@11.222.*
+
+	My Darkbot don't connect to the servers I want. 
+	Write on darkbot/scripts directory ./AddServer and follow instructions
+	or
+	- follow procedures on A, B, C and D.
+
+	- open servers.ini and remove the servers in there adding those you would like 
+	Darkbot to connect to. Syntax must be .irc.server.here 6667' and NOT 
+	irc.server.here:6667' . Save and connect.
+
+	My Darkbot is not giving me the greeting message (setinfo). 
+	Darkbot ignores whoever rejoins a channel for a period of time. The default 
+	length of time to not recount someone when rejoins the channel is set to 60 
+	seconds.
+
+	My Darkbot is not accepting commands if I repeat them in a short period of time. 
+
+	Darkbot ignores for a certain period of time repeated commands to avoid 
+	flooding. Use one command alias or wait a couple minutes.
+
+	My Darkbot is not answering when someone asks the same question. 
+	Darkbot will not reply to a topic already asked (with same syntax) during a 
+	certain period. By default that length of time is set to 5 seconds.
+
+	I'm stuck... I don't know how to turn off my Darkbot 
+	You can use command !die online or on your shell kill -9 pidNumber after doing 
+	'ps x' do check it's pid, or killall darkbot. 
+
+	// ================ SYSTEM REQUIREMENTS ================
+
+	/* 
+	* Change the Ansi C signal handling below if it's not in the standard place,
+	* usually on include/. Leave it as is if you don't know what that is. Type 
+	* 'man signal' on your unix box for more info.
+	* (default = <signal.h>)
+	*/
+	#include <signal.h>
+
+	/*
+	* If you are getting errors during compilation about clock_t 
+	* and clocks_per_sec not being available, turn this option ON.
+	* This includes <time.h> in addition to <sys/time.h>.
+	* (default = OFF)
+	*/
+	#define NEED_CLOCK_T ON
+
+	/*
+	* If your compiler does not support snprintf() turn this
+	* option ON. (default = OFF)
+	*/
+	#define SNPRINTF_SUPPORT ON
+
+	/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

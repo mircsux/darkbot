@@ -1,0 +1,142 @@
+#! /bin/sh
+PID=0624233000
+# Darkbot utility to auto generate crontab.
+# Just run this script and a new one with the same name will be created
+# with the actual path of your Darkbot installation. At the same time 
+# a crontab job will be created with 10 mins interval.
+
+# to do: user defined timers on command line utility launch
+
+MAKE_DBCRON () {
+cat > dbcron << EOF[DBCRON]
+#! /bin/sh
+# Darkbot's crontab utility
+
+DBPATH="$DBPATH" # your darkbot directory
+DBBIN="$DBBIN"   # Darkbot's binary (executable) file
+DBPIDFILE="$DBBIN.pid" # process ID file (same as binary + .pid)
+
+# This file was automatically generated the first time you've run  dbcron.
+# If for any reason you've changed your  Darkbot directory or it's  binary
+# you'll need to modify the variables DBPATH DBBIN and DBPIDFILE on top of
+# this file accordingly to the actual values.
+# Defaulty crontab job is of 10 mins interval. If you wish to change it
+# edit '0,10,20,30,40,50 * * * *'. If you don't understand it type 'man crontab'
+# -----------------------------------------------------------------------------
+# What this script does:
+# Changes to darkbot root dir; if pid file exists extracts pid number;
+# tests it by issuing an inoffensive kill; if pid is active exits, doing
+# nothing; if not means the file with pid is there but there is no active
+# process, so removes it. finally cheks if program bin exists then starts it.
+# ____________ Do not change anything bellow this line! ____________#
+cd \$DBPATH
+if test -r \$DBPATH/\$DBPIDFILE; then   
+     DBPID=\$(cat \$DBPATH/\$DBPIDFILE)
+     if \$(kill -CHLD \$DBPID >/dev/null 2>&1)
+     then
+        exit 0
+     fi
+     echo -e "\nstale pid file (erasing it)"
+     rm -f \$DBPATH/\$DBPIDFILE
+fi
+echo -e "\nDarkbot is dead! Restarting . .  .   .    .     .      .       .\n"
+if test -x \$DBBIN ;then
+   \$DBPATH/\$DBBIN
+   exit 0
+fi
+echo "could not reload"
+EOF[DBCRON]
+}
+
+# PREP SCRIPT
+
+# check if it is on the right place
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $0...\n\n\n"; sleep 1; exit 0
+}
+DB_SCRIPTS_PATH () {
+dirutil="scripts"
+filutil="`basename $0`"
+# check if dir is correct
+if ! echo `pwd` | grep -q "\/"$dirutil""; then
+# file is not being launched from $dirutil
+ if [ -d "$dirutil" ]; then # dir is there
+ # if file is not in the correct dir
+  if [ ! "`ls "$dirutil" | grep "$filutil"`" ]; then
+  # file is not in the correct dir so move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory.\n"
+echo "Moving it now...."
+sleep 2
+cat > db_wrong_path << EOF[WP]
+mv -f $0 "$dirutil"/
+cd "$dirutil"/
+echo -e "\n| Your "$filutil" is now located in your "$dirutil" directory |
+            | Launch it from there when necessary |\n\n"
+sleep 4
+$0
+rm -f ../db_wrong_path
+exit 0
+EOF[WP]
+. db_wrong_path
+  else # file is in dir so just cd
+cd "$dirutil"/
+  fi
+ else # dir is not there so don't bother - tell user to move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory and launched from there or Darkbot's root.
+Please move it and launch it again."
+sleep 3
+ABORT
+ fi
+fi
+}
+#DB_SCRIPTS_PATH
+
+# check if crontab is present if not there is no reason to run this script
+if ! type crontab >/dev/null 2>&1 ; then
+echo -e "\nThis script needs 'crontab' command to run, which appears it's \
+not installed on this system.
+Leaving..."
+exit 0
+fi
+
+#check if crond is active
+if [ ! "$(ps ax | grep -v grep | grep crond 2>/dev/null)" ]; then
+echo -e "\nThis script needs 'crond' running, which appears it's \
+not on this system.
+Leaving..."
+fi
+
+# dbcron engine creation. make vars for darkbot path, dir and pid file
+DBPATH=$(cd ..; pwd)
+if [ -x "$DBPATH/darkbot" ]; then
+DBBIN="darkbot"
+DBPIDFILE=$DBBIN.pid
+
+# vars are done so let's tell crontab how we want it setup
+# check every 10 minutes; send messages to null
+# echo '0,10,20,30,40,50 * * * *' "$DBPATH/scripts/dbcron" > crontable.$$ #debug only
+echo '0,10,20,30,40,50 * * * *' "$DBPATH/scripts/dbcron >/dev/null 2>&1" >> crontable.$$
+crontab crontable.$$; rm -f crontable.$$
+
+# transfer crontab engine file with new vars on top to a new file with same
+# name as this one. THIS FILE CONTENTS WILL BE GONE!
+ MAKE_DBCRON
+ clear
+echo -e "\n\nDarkbot crontab utility\n\nCrontab job created successfully!
+To check if everything is okay, kill your bot if it is connected to IRC.
+It should automatically restart in 10 minutes.\n
+Suggestions, improvements?
+Support: http://forum.darkbot.org\n\n"
+else
+echo -e "\nDarkbot's Crontab Utility.
+WARNING!!!!\nDarkbot's binary not found.
+Please run ./configure if you haven't do so or restore \
+file names to it's default values.\n
+Leaving $0..." 
+exit 0
+fi

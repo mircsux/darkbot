@@ -1,0 +1,121 @@
+		**** Darkbot Contributors ****
+
+The following is a list of people who have made contributions to Darkbot.
+We intend this list to be as complete as possible, but if you have any 
+corrections, modifications, or additions, please let us know.  We don't 
+want to leave any contributors unnoticed.
+		
+Author/Creator: Jason Hamilton (play) <jason@superlink.net>
+Project Administrator: LuizCB (Pincel) <LuizCB@darkbot.info>
+
+A large portion of Darkbot's code, although primarily and mainly done
+by Jason Hamilton, is also made possible by the following contributors.
+
+Thanks to everyone for their contributions to this project.
+
+**** Coders ****
+
+Ron Robbins Jr. (ron) <ron@darkbot.org>
+ * A plethora of changes, modifications, and bug fixes since version 6f6.
+Paul (reet2) <paul@darkbot.info>
+ * Several major changes on 6f6 for release 7.  Added the quiz stuff, 
+   and original google functionality.
+Neil Darlow 
+ * Code optimization patches on info and check_permban on prep 7 - 3/22/2002
+Bart Jansens
+ * Typo correction on Dutch language / prep 7 April 10, 2000
+Dan (ripper_) @ undernet 
+ * Several major changes - 5f21,22,23,26
+Kosh @ superchat 
+ * Implementation of WIN32 port
+s0meguy @ undernet
+ * found a missing variable April v. 5f22 -- 16, 23, 2000
+Oleg <green@crimea.edu>
+ * "repeated server stoned" and NEED_LIB5 corrections - 5f18 5f15
+Fouton <c592030@everest.cclabs.missouri.edu>
+ * #define SGI -f18
+nak @ superchat 
+ * VHOST support - 5f11
+Gator @ superchat 
+ * 'fclose' issue - 5f3
+[K]aka (at?)
+ * A buffer overflow issue - 5-Beta7
+BLightnin @ undernet 
+ * Datasearch fix; save topic duplicates suggestion of log PRIVMSG - 5-Beta7 4-Alpha2
+rewpaul rew @ undernet 
+ * Fixed 'pipe' on topics; Q~ variable fix suggestion on mask function; Adduser fix; 
+   wildcards on topics RANDOM_STUFF OFF on 'Sleep' ON - 5-Beta6 - 5-Beta3 4-Beta2 4-Beta1
+gavers @ undernet
+ * Found 'pipe' on topics issue' - 5-Beta6 5-Beta1
+Nenemis (at?) 
+ * Suggestion on notice help join greeting info - 5-Beta3
+wx @ undernet 
+ * CTCP replies fix; suggest UP command - 5-Beta1 5-Alpha4
+Zaf @ superchat 
+ * Suggestion of RANDOM_STUFF Idle - 4-Beta1
+mark @ undernet 
+ * License usage agreement update - 4-Beta1
+bow @ undernet 
+ * AddServer fix - 4-Alpha2
+
+and several other anonymous contributors 
+
+**** Translators ****
+ENGLISH    - play <jason@superlink.net>
+FRENCH 	   - Inajira <inajira@videotron.ca>
+	       - EfX <michel.efx@globetrotter.net>
+	       - eCHaLoTTe <echalotte@cablevision.qc.ca>
+	       - Raider <raider@superchat.ws>
+SPANISH    - speed1 <speed@edure des.edu.do>
+DUTCH      - Asmodai <asmodai@wxs.nl>
+	       - Dan <dan@ntlbusiness.com>
+LATIN	   - Otaku <otaku@unixgeek.ml.org>
+GREEK      - Chris_CY <chriscy@cylink.net>
+	       - Raider <raider@superchat.ws>
+EBONICS    - rapsux <bitter@ici.net>
+PIG LATIN  - Cloud <burtner@usa.net>
+RUSSIAN	   - KOI8 encoding
+RUSSIAN	   - CP1251 encoding
+     	   - Oleg Drokin <green@ccssu.crimea.ua>
+PORTUGUESE - Pincel <Pincel@darkbot.info>
+GERMAN	   - C.Hoegl@gmx.net & marc@reymann.net
+	       - Dan <dan@ntlbusiness.com>
+ITALIAN    - daniele nicolucci <jollino@icemail.it>
+CHINISE    - James <jamespower@263.net>
+SWEDISH	   - Ybznek <sunmo@seaside.se>
+NORWEGIAN  - [SoHo] <soho@int19h.com>
+ROMANIAN   - Radu <radu.negoescu@sante.univ-nantes.fr>
+ARABIC	   - MrSiMo <mrsimo7@yahoo.fr>
+
+Other Darkbot related projects
+Darkbot Commander - Alex99 <Alex99@darkbot.info>
+
+**** Helpers ****
+These are people who acknowledgedly colaborate with Darkbot Project
+	guidind and helping users trough their difficulties
+... by alpha order...
+Alex99 Alex99@darkbot.info / @ undernet #darkbot
+Andre (Syntax6) Syntax6@darkbot.info / @ undernet #darkbot
+baphomet @ undernet #darkbot
+derv0 @ undernet #darkbot
+BLightnin @ undernet #darkbot
+juice @ undernet #darkbot
+Shaky @ undernet #darkbot
+TuEuR @ undernet #darkbot
+{SID_V} @ undernet #darkbot
+
+**** Special Donnations ****
+Andre (Syntax6) Syntax6@darkbot.info 
+ * has hosted Darkbot Web pages on his servers. 
+   Has also donated DNS hosting for Darkbot domains.
+
+SourceForge, for hosting one of our mirrors, and giving us nifty
+stats and ratings about the project, that we can gawk at and admire.
+
+LaZZ from www.chatcircuit.net for providing another one of our mirrors.
+Will (xiaodown) for providing the darkbot.org domain.
+
+**** " ****
+
+(PLEASE help keep this list up-to-date by e-mailing juice@darkbot.org
+ with any additions.)

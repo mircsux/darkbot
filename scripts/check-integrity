@@ -1,0 +1,2209 @@
+#! /bin/sh
+PNCI="\nDarkbot Database File Integrity\n<*************_~_*************>\n"
+PID=0624233000
+SLEEP () { SLEEP=$(sleep $1); }
+#cd scripts 2>/dev/null
+# to do: function to remove comments from shell utils and c files
+# removal of pre-made databases (in conjunction w/download-databases)
+# set -x # debug only
+
+USAGE () {
+clear
+    echo -e >&2 "\n$PNCI Checks Darkbot data files for errors.\n
+Usage: `basename $0` <file|s|all> [-option|s]
+(file triggers are: all; info2; servers; setup; perform; userlist; random)
+ Options:
+ -h         Shows this brief usage help (read README_UTILS for detailed info)
+ -quick     Speeds up the process bypassing pauses (sleep instances)
+ -nointro   Bypasses introductory information (a)
+ -report    Shows report file contents
+ -topicsize sets info2.db's topic length (default 50) (a)(b)
+ -replysize sets info2.db's reply length (default 400) (a)(b)
+ -default   Returns program to it's default values removing all options
+(a)  The values of these options will be retained unless you use -default
+(b) Only necessary if you have a different length then the one on defines.h
+WARNING: Darkbot must be offline for most of saved information be effective!
+exs:
+$0 all               Starts utility in full mode
+$0 info2             Checks info2.db in normal operation
+$0 userlist -quick   Checks userlist.db bypassing pauses\n
+   Support: http://forum.darkbot.org\n"
+exit 1
+}
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $0 ...\n\n\n"; sleep 1; exit 0
+}
+
+DB_SCRIPTS_PATH () {
+dirutil="scripts"
+filutil="`basename $0`"
+# check if dir is correct
+if ! echo `pwd` | grep -q "\/"$dirutil""; then
+# file is not being launched from $dirutil
+ if [ -d "$dirutil" ]; then # dir is there
+ # if file is not in the correct dir
+  if [ ! "`ls "$dirutil" | grep "$filutil"`" ]; then
+  # file is not in the correct dir so move it 
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory.\n"
+echo "Moving it now...."
+sleep 2
+cat > db_wrong_path << EOF[WP]
+mv -f $0 "$dirutil"/
+cd "$dirutil"/
+echo -e "\n| Your "$filutil" is now located in your "$dirutil" directory |
+            | Launch it from there when necessary |\n\n"
+sleep 4
+$0
+rm -f ../db_wrong_path
+exit 0
+EOF[WP]
+. db_wrong_path
+  else # file is in dir so just cd
+cd "$dirutil"/
+  fi
+ else # dir is not there so don't bother - tell user to move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory and launched from there or Darkbot's root.
+Please move it and launch it again."
+sleep 3
+ABORT
+ fi
+fi
+}
+
+ENVIRONMENT () {
+cd scripts 2>/dev/null
+BASE_WORKDIR=.scriptutils
+COMMON_TMP=$BASE_WORKDIR/tmp
+mkdir -p $BASE_WORKDIR/tmp
+TMP=$BASE_WORKDIR/._tmp/ci$$
+mkdir -p $BASE_WORKDIR/._tmp/
+ci_vars=$BASE_WORKDIR/.ci_vars
+if [ -e "$ci_vars" ]; then
+. "$ci_vars"; fi
+ci_report=$BASE_WORKDIR/integrity-report
+trap 'rm -fr $COMMON_TMP >/dev/null; rm -fr $BASE_WORKDIR/._tmp* >/dev/null 2>&1' 0
+m_trap="echo -e \n\n -- `basename $0` terminated by `whoami` --\n\n"
+trap '$m_trap 1>&2; exit' 1 2 3 13 15
+# SLEEP () { SLEEP=$(sleep $1); }
+}
+
+# test environment
+TESTDEPEND () {
+NonFatalError () {
+echo "FATAL ERROR at $0 (`date`): $FiLe not detected \
+on this system." >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PNCI\nFATAL ERROR at $0 (`date`)\n\n
+$FiLe not detected on this system.
+It is essential for $0 to work properly."
+ABORT
+}
+if ! (type "$1" 1>/dev/null 2>&1); then
+FiLe="$1"
+NonFatalError $1
+sleep 1; unset $FiLe
+fi
+}
+TESTDEPEND_GO () {
+TESTDEPEND "grep"; TESTDEPEND "sed"; TESTDEPEND "cut"; TESTDEPEND "tee"
+TESTDEPEND "wc"; TESTDEPEND "tr"; TESTDEPEND "cat"; TESTDEPEND "expr"
+}
+
+CI_INTRO () {
+count=30; counter=1
+while [ $count != "$counter" ]; do
+count=`expr  "$count" - 1`
+clear
+echo -e "$PNCI
+This information will vanish in ["$count"] seconds...\n
+This utility executes a considerable amount of operations during
+file integrity verification. It depends on the size of the files
+to be checked and errors to correct the time it takes to perform
+all it's functions with accuracy.
+All process is done without user intervention, so be patient and
+wait until it is done  or  leave it working and check afterwards
+it's final results on the  integrity-report  file  or  by typing
+$0 -report.
+If you are in a rush type  $0 -quick (fast mode).\n
+If  you get wrong results on final counts due  to  unpredictable
+characters or symbols you might have on your  files please  help
+us correct the problem by participating it on the forum.\n
+For detailed information about this utility  read  README_UTILS.\n
+To bypass this introduction write $0 -nointro		 
+To abort all operations at any time press CTRL + C"
+SLEEP 1
+done
+}
+
+LINE_FEED () {
+# just for diagnose since DELEMPTY_LINES will fix any eventual problem
+clear
+echo -e "$PNCI* Line Feed *\n
+Checking for missing line feed at the end of file contents...\n"
+unset line_feed
+if [ "$(tail -n1 $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')" = \
+"0" ]; then
+echo "-    Detected missing Line Feed at the end of $ORIG_FILE!" \
+| tee -a $TMP-LINE_FEED.$ORIG_FILE.rep.head
+line_feed=y
+else
+echo "-    No missing line feed detected at the end of $ORIG_FILE!" \
+| tee -a $TMP-LINE_FEED.$ORIG_FILE.rep.head
+fi
+SLEEP 4
+}
+
+EMPTY_LINES () {
+clear
+echo -e "$PNCI* Empty Lines *\n
+Checking for empty lines on $ORIG_FILE...\n"
+SLEEP 1
+
+# check numb lines if not done b4
+if [ -z "$numLinesORI" ]; then
+numLinesORI=$(cat $ORIG_PATH | wc -l | tr -cd '[:alnum:]')
+fi
+
+# added this in case info2.db is empty and the working file is an imported db
+if [ ! -z "$numLinesORI" ] || [ "$numLinesORI" != "0" ]; then
+numLinesORI=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+fi
+
+# if detected no line feed actual lines will be + 1
+if [ "$line_feed" = "y" ]; then
+numLinesORI="`expr $numLinesORI + 1`"
+CHANGED=""$CHANGED" "$ORIG_FILE""
+fi
+
+# clean empty
+grep '.' $TMP-DB.WORK.FILE > $TMP-DB.WORK.FILE_TMP
+mv -f $TMP-DB.WORK.FILE_TMP $TMP-DB.WORK.FILE
+
+#check numb lines after
+numLinesNOW=$(cat "$TMP-DB.WORK.FILE" | wc -l | tr -cd '[:alnum:]')
+
+# REPORT
+# a quick report
+echo "EMPTY LINES on "$ORIG_FILE"" > $TMP-EMPTY_LINES.$ORIG_FILE.rep.head
+if [ "$numLinesORI" != "$numLinesNOW" ]; then
+CHANGED=""$CHANGED" "$ORIG_FILE""
+numLinesORI_NOW=$(expr $numLinesORI - $numLinesNOW 2>/dev/null)
+
+echo "-    Total found - ["$numLinesORI_NOW"]    Lines before = "$numLinesORI"\
+    Lines after = "$numLinesNOW"" | tee -a $TMP-EMPTY_LINES.$ORIG_FILE.rep.head
+line_s=$(if [ "$numLinesORI_NOW" -gt "1" ]; then echo lines
+else echo line; fi)
+echo -e "\nRemoved "$numLinesORI_NOW" empty "$line_s"!"
+else
+echo "-    No empty lines found!" | tee -a $TMP-EMPTY_LINES.$ORIG_FILE.rep.head
+fi
+
+SLEEP 4
+}
+
+INCOMPL_ENTRIES () {
+# checks for lines with only 1 word followed by carriage return
+clear
+echo -e "$PNCI* Incomplete Entries *\n
+Checking for topics with no replies on $ORIG_FILE...\n"
+SLEEP 1
+
+grep -ne '^ *[^ ]\+$' $TMP-DB.WORK.FILE > $TMP-noreply
+noreply_lines=$(cat $TMP-noreply | wc -l | tr -cd '[:alnum:]')
+
+if [ "$noreply_lines" != "0" ]; then
+echo -e "    Total found - [$noreply_lines]\n"
+# removing it
+echo -e "sed '" > $TMP-noreply.to.be.deleted
+sed s/:/d' '/ $TMP-noreply | cut -d' ' -f1 >> $TMP-noreply.to.be.deleted
+echo -e "' $TMP-DB.WORK.FILE > $TMP-noreply.deleted" >> \
+$TMP-noreply.to.be.deleted
+echo -e "Removing it...\n"
+. $TMP-noreply.to.be.deleted
+mv -f $TMP-noreply.deleted $TMP-DB.WORK.FILE
+entry_pl=$(if [ "$noreply_lines" -gt "1" ]; then echo entries
+else echo entry; fi)
+echo -e "Removed "$noreply_lines" incomplete "$entry_pl" from \
+$ORIG_FILE!\n"
+fi
+
+# REPORT
+echo -e "INCOMPLETE ENTRIES (no topic or reply)" > \
+$TMP-INCOMPL_ENTRIES.rep.head
+if [ -s $TMP-noreply ]; then
+echo -e "-    Incomplete entries found: "$noreply_lines"" >> \
+$TMP-INCOMPL_ENTRIES.rep.head
+echo "(Check section \"Removed INCOMPLETE ENTRIES from $ORIG_FILE\" \
+on this file)" >> $TMP-INCOMPL_ENTRIES.rep.head
+echo -e "===== Removed INCOMPLETE ENTRIES from $ORIG_FILE 
+`cut -d: -f2- $TMP-noreply`
+_______________________ end of incomplete entries \
+_______________________" > $TMP-INCOMPL_ENTRIES.rep.body
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+echo "-    No incomplete entries found!" | tee -a \
+$TMP-INCOMPL_ENTRIES.rep.head
+fi
+
+SLEEP 4
+}
+
+DUP_ENTRIES () {
+clear
+echo -e "$PNCI* Duplicate Entries *\n
+Checking for duplicate entries on $ORIG_FILE ..."
+SLEEP 1
+
+# get duplicate lines - 1 item per dups on a vertical list ( for infos)
+sort $TMP-DB.WORK.FILE | uniq -di > $TMP.dup.entries
+# count number of lines that have repeated replies
+dupentries_lines=$(cat $TMP.dup.entries | wc -l | tr -cd '[:alnum:]')
+
+# if there are dup entries proceed with deletion and report
+if [ -s $TMP.dup.entries ]; then
+
+# just a condition for entry/entries
+if [ "$dupentries_lines" -gt "1" ]; then ENTRY_pl=entries
+else ENTRY_pl=entry
+fi
+
+echo -e "\n    Total found - ["$dupentries_lines"]\n"
+
+# get total num of lines on the main file before entry deletion; used on infos
+dupentries_lin_bef=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+
+#DELETE
+# execute uniq - produce final file without repeats
+echo -e "Removing it..."
+#duplicate "$dupentries_lines" $ENTRY_pl from $ORIG_FILE..."
+sort $TMP-DB.WORK.FILE | uniq -i > $TMP-DB.WORK.FILE-TMP
+mv -f $TMP-DB.WORK.FILE-TMP $TMP-DB.WORK.FILE
+
+# COUNTS
+# count main after
+dupentries_lin_aft=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+# result - count amount of repetitions ( lines extracted )
+dupentries_lin_rem=$(expr "$dupentries_lin_bef" - "$dupentries_lin_aft")
+if [ "$dupentries_lin_rem" -gt "1" ]; then
+echo -e "\nRemoved all "$dupentries_lin_rem" repetitions of \
+"$dupentries_lines" $ENTRY_pl from $ORIG_FILE!"
+else
+echo -e "\nRemoved "$dupentries_lin_rem" repetition of \
+"$dupentries_lines" $ENTRY_pl from $ORIG_FILE!"
+fi
+fi
+
+# REPORT
+if [ -s $TMP.dup.entries ]; then
+echo "DUPLICATE ENTRIES
+-    Number of entries with repetitions: "$dupentries_lines"
+-    Number of repetitions found: "$dupentries_lin_rem"
+-    Number of lines removed: "$dupentries_lin_rem"
+ (Check section \"Removed DUPLICATE ENTRIES from $ORIG_FILE\" on this file)" \
+ > $TMP-DUP_ENTRIES.$ORIG_FILE.rep.head
+
+echo -e "===== Removed DUPLICATE ENTRIES from "$ORIG_FILE"" > \
+$TMP-DUP_ENTRIES.$ORIG_FILE.rep.body
+cat $TMP.dup.entries >> $TMP-DUP_ENTRIES.$ORIG_FILE.rep.body
+echo "_______________________ end of duplicate entries \
+________________________" >> $TMP-DUP_ENTRIES.$ORIG_FILE.rep.body
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+echo
+echo "-    No repeated entries found!" \
+| tee -a $TMP-DUP_ENTRIES.$ORIG_FILE.rep.head
+fi
+
+SLEEP 4
+}
+
+DUP_TOPICS () {
+clear
+echo -e "$PNCI* Duplicate Topics *\n
+Checking for duplicate topics on $ORIG_FILE ...\n"
+SLEEP 1
+
+# get a list of all dups (including repetitions) and line numbers
+grep -n . $TMP-DB.WORK.FILE | cut -d' ' -f1 | sed s/:/' '/ | sort +1 | \
+uniq -iD -f1 > $TMP.dup.topics
+
+# count number of lines with repeated topics
+duptopics_lines=$(cat $TMP.dup.topics | wc -l | tr -cd '[:alnum:]')
+
+# if there are dup topics proceed with deletion and report
+if [ -s $TMP.dup.topics ]; then
+
+# get total num of lines on the main file before entry deletion; used on infos
+duptopics_lin_bef=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+
+# get only 1 line of repeats (2nd column on this 1) then sort it/numerical order# this file will have lines not to be removed from main file
+# i.e., 1 of the dups needs to be kept on the main file
+uniq -id -f1 $TMP.dup.topics | cut -d' ' -f1 | sort -g > $TMP-duptopics.uniques
+duptopics_uniques=$(cat $TMP-duptopics.uniques | wc -l | tr -cd '[:alnum:]')
+
+duptopics_repetitions=$(expr "$duptopics_lines" - "$duptopics_uniques")
+
+# condition for topic/topics repetition/s etc
+topic_s="$(if [ "$duptopics_uniques" -gt "1" ]; then echo topics; \
+dbs_plural=y; else echo topic; dbs_plural=n; fi)"
+repetition_s="$(if [ "$duptopics_repetitions" -gt "1" ]; then echo repetitions; \
+else echo repetition; fi)"
+
+echo -e "     Detected a total of "$duptopics_repetitions" $repetition_s on \
+$duptopics_uniques $topic_s!"
+
+if [ "$duptopics_repetitions" -gt 250 ]; then
+echo -e "That's a huge amount of repetitions.
+This process envolves several operations and can take some time to complete."
+fi
+echo -e "\n     Please wait...\n"
+
+# sort file $TMP.dup.topics so next step will not be a mess
+cut -d' ' -f1 $TMP.dup.topics | sort -g > $TMP-duptopics.sorted
+
+entry_ies="$(if [ "$repetition_s" = "repetitions" ]; then echo "entries"; \
+else echo "entry"; fi)"
+echo -e "     Marking "$entry_ies" to be removed...\n"
+
+# compare with diff then extract only lines to be removed from main file
+diff -y $TMP-duptopics.sorted $TMP-duptopics.uniques | grep "<" | \
+sed s/[[:blank:]]*[\<$]// > $TMP-duptopics.2b.del
+
+# DELETE from main file
+# prepare sed operations
+echo "sed '" > $TMP-duptopics.2.del
+sed 's/$/d/' $TMP-duptopics.2b.del >> $TMP-duptopics.2.del
+echo "' $TMP-DB.WORK.FILE > $TMP-topic.lines.deleted" >> $TMP-duptopics.2.del
+
+duplicate_s="$(if [ "$repetition_s" = "repetitions" ]; then echo \
+"all "$duptopics_repetitions" duplications"; else echo \
+""$duptopics_repetitions" duplication"; fi)"
+echo -e "     Trying to remove "$duplicate_s" from $ORIG_FILE..."
+
+# execute the file
+. $TMP-duptopics.2.del
+
+## move file w/deletes to working file
+mv -f $TMP-topic.lines.deleted $TMP-DB.WORK.FILE
+
+# COUNTS
+# count main after
+duptopics_lin_aft=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+# result - count amount of repetitions ( lines extracted )
+duptopics_lin_rem=$(expr "$duptopics_lin_bef" - "$duptopics_lin_aft")
+# compare lines on file from total antecipated lines 2 be removed
+if [ "$duptopics_lin_rem" = "$duptopics_repetitions" ]; then
+ if [ "$duptopics_lin_rem" -gt "1" ]; then
+ echo -e "\nRemoved all "$duptopics_lin_rem" repetitions of \
+"$duptopics_uniques" "$topic_s" from $ORIG_FILE!"
+ else
+ echo -e "\nRemoved "$duptopics_lin_rem" repetition of \
+"$duptopics_uniques" $topic_s from $ORIG_FILE!"
+  fi
+else
+echo -e "There is a discrepancy between what was antecipated to be removed
+("$duptopics_repetitions $repetition_s") and what whas actually removed \
+("$duptopics_lin_rem").
+That can be caused by some symbols or characters on your $ORIG_FILE
+which are creating a conflict with this utility.
+Check $ci_report and compare the results
+with what you have in your file."
+fi
+fi
+
+# REPORT
+if [ -s $TMP.dup.topics ]; then
+echo -e "\nPlease wait while a copy of all removed entries is being made
+and a report generated..."
+SLEEP 2
+echo "DUPLICATE TOPICS
+-    Number of topics with repetitions: "$duptopics_uniques"
+-    Number of repetitions found: "$duptopics_repetitions"
+-    Number of lines removed: "$duptopics_lin_rem"" > \
+ $TMP-DUP_TOPICS.rep.head
+ echo "(You'll find on DUPLICATE TOPICS section of this file all removed  entries
+ in case you would like to modify it and then reinsert it on it's previous
+ location. One entry with the same topic was left on your $ORIG_FILE file)" \
+ >> $TMP-DUP_TOPICS.rep.head
+if [ "$duptopics_repetitions" != "$duptopics_lin_rem" ]; then
+echo -e "##### WARNING #####\nWrong result: Removed \
+"$duptopics_lin_rem" of "$duptopics_repetitions" repetitions on \
+"$duptopics_uniques" topics.
+ Check the corresponding section  of  this file  and compare the results  with
+ your $ORIG_FILE file. Data with unpredictable characters might be causing
+ the difference. If you discover the cause please contact us at the forum
+ and if possible attach the file."
+fi >> $TMP-DUP_TOPICS.rep.head
+echo -e "===== Removed DUPLICATE TOPICS from "$ORIG_FILE"" > \
+$TMP-DUP_TOPICS.rep.body
+# prepare sed operations
+echo "sed -n '" > $TMP.report_duptopics_0
+sed 's/$/p/' $TMP-duptopics.2b.del >> $TMP.report_duptopics_0
+echo "' $TMP-DB.WORK.FILE >> $TMP-DUP_TOPICS.rep.body" >> \
+$TMP.report_duptopics_0
+# execute sed
+. $TMP.report_duptopics_0
+echo "________________________ end of duplicate topics \
+________________________" >> $TMP-DUP_TOPICS.rep.body
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+echo "-    No duplicate topics found." | tee -a $TMP-DUP_TOPICS.rep.head
+fi
+
+SLEEP 5
+}
+
+TOPIC_SIZE () {
+# checks max length your database topics
+# topics + than 400 chars or whatever is set on defines.h's
+# define TOPIC_SIZE
+
+clear
+echo -e "$PNCI* Maximum Topic Size/Length *\n
+Checking maximum character length of the topics entries on $ORIG_FILE...\n"
+
+# if no var with size go for defines.h. if no defimes.h assume 400
+if [ ! -n "$TOPIC_SIZE" ]; then
+# get defines.h setting if existent
+TOPIC_SIZE="$(sed -n '/MAX_TOPIC_SIZE/s/#define[[:blank:]]MAX_TOPIC_SIZE//p' \
+../source/defines.h 2>/dev/null | tr -cd '[:alnum:]')"
+
+ if [ ! -n "$TOPIC_SIZE" ]; then
+echo -e "Unable to obtain configured maximum topic lenght allowed.
+Assuming default value of 400 characters...\n
+If this is not the setting you actually have please press CTRL + C to abort
+and write $0 -topic_size to set the default for this utility.\n"
+TOPIC_SIZE=50
+SLEEP 2
+ else
+ echo -e "Your defined maximum topic length is "$TOPIC_SIZE" characters."
+ fi
+fi
+
+# get max topic length on file
+ACTUAL_TOPIC_SIZE=$(cat $TMP-DB.WORK.FILE | cut -d' ' -f1 | wc -L \
+| tr -cd '[:alnum:]')
+
+#  size+1 - ( if TOPIC_SIZE this will put it as 401
+# because what we need is remove all exceeding max length, i.e, 401&+)
+TOPIC_SIZE_PLUS_1=`expr $TOPIC_SIZE + 1`
+
+# if length in file is greater than max size... work on it
+if [ "$ACTUAL_TOPIC_SIZE" -gt "$TOPIC_SIZE" ]; then
+echo -e "-     Currently your longest topic (length) is: \
+"$ACTUAL_TOPIC_SIZE" characters \n"
+SLEEP 1
+echo -e "Please wait while the total number of topics exceeding maximum
+character lenght allowed is being obtained..."
+SLEEP 1
+
+# get all over length
+cat $TMP-DB.WORK.FILE | grep -nE '^.[^ ]{'$TOPIC_SIZE',}' \
+> $TMP-topic.size.all
+
+if [ -s $TMP-topic.size.all ]; then # we have entries in fault
+
+# get only line numbers ( will be needed to report file )
+cut -d: -f1 $TMP-topic.size.all > $TMP-topic.size.all.numb
+
+# get number of lines on working file (later will be used to check if
+# operations went right
+NUM_LINES_B4=$(cat "$TMP-DB.WORK.FILE" | wc -l | tr -cd '[:alnum:]')
+
+# count total before deletion
+NUM_TOPICS_EXCEEDING_SIZE=$(cat "$TMP-topic.size.all.numb" | wc -l \
+| tr -cd '[:alnum:]')
+
+echo -e "-     Total entries with topic length exceeding size found: \
+"$NUM_TOPICS_EXCEEDING_SIZE"\n"
+SLEEP 2
+
+echo "Preparing for deletion process..."
+SLEEP 1
+echo "sed '
+`cat $TMP-topic.size.all | sed s/:/d' '/ | cut -d' ' -f1`
+' $TMP-DB.WORK.FILE > $TMP-topic.size.deleted" >> $TMP-topic.size.lines.to.del
+
+echo -e "Removing it ..."
+SLEEP 1
+# execute
+. $TMP-topic.size.lines.to.del
+# move it to working file
+mv -f $TMP-topic.size.deleted $TMP-DB.WORK.FILE
+
+entry_pl=$(if [ "$NUM_TOPICS_EXCEEDING_SIZE" -gt "1" ]; \
+then echo entries; else echo entry; fi)
+echo -e "Removed "$NUM_TOPICS_EXCEEDING_SIZE" "$entry_pl" from \
+"$ORIG_FILE"!\n"
+
+fi # end of -s $TMP-topic.size.all
+
+else # "$ACTUAL_TOPIC_SIZE" is not greater than "$TOPIC_SIZE"
+echo -e "\nYour topic's length is within your current configuration
+value, which is "$TOPIC_SIZE" characters maximum.\n\n"
+SLEEP 3
+fi
+
+# REPORT
+if [ -s $TMP-topic.size.all ]; then
+# first check from the working file
+NUM_LINES_AFTER=$(cat "$TMP-DB.WORK.FILE" | wc -l | tr -cd '[:alnum:]')
+NUM_LINES_NOW="$(expr "$NUM_LINES_B4" - "$NUM_LINES_AFTER")"
+NUM_LINES_DIFF="$(expr "$NUM_TOPICS_EXCEEDING_SIZE" - "$NUM_LINES_NOW")"
+
+# report head top
+echo "TOPICS LENGTH" > $TMP-TOPIC_SIZE.rep.head
+
+if [ "$NUM_LINES_NOW" != "0" ]; then # means at least some were removed
+# check if are the same as the ones that were supposed too
+ if [ "$NUM_LINES_NOW" = "$NUM_TOPICS_EXCEEDING_SIZE" ]; then # looks ok
+# report header
+echo "-  Allowed length = "$TOPIC_SIZE"     \
+Maximum lenght detected = "$ACTUAL_TOPIC_SIZE"
+-    Entries exceeding configured value = "$NUM_TOPICS_EXCEEDING_SIZE"
+-    Total entries removed = "$NUM_LINES_NOW""
+    
+# report body
+echo -e "\n===== Removed TOPICS LENGTH exceeding allowed value on \
+"$ORIG_FILE"
+`cat $TMP-topic.size.all | cut -d: -f2-`
+________________ end of topics with maximum length exceeded \
+__________________" > $TMP-TOPIC_SIZE.rep.body
+
+ else # something wrong, diff of lines on working file don't match total 2b del
+ echo "$NUM_LINES_DIFF entries were not removed! Please check report file." 
+ fi
+
+else # final lines count on working file is = 0 so no lines were removed
+echo "Something went wrong... not possible to remove entries.
+Check report file."
+fi 
+
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else # (-s $TMP-topic.size.all) no entries in fault
+echo -e "No topics exceeding maximum length allowd found!"
+fi >> $TMP-TOPIC_SIZE.rep.head
+
+SLEEP 5
+}
+
+DATA_SIZE () {
+# checks max length your database replies
+# replies + than 400 chars or whatever is set on defines.h's
+# define DATA_SIZE
+
+clear
+echo -e "$PNCI* Maximum Reply Size/Length *\n
+Checking maximum character length of the replies entries on $ORIG_FILE...\n"
+
+# if no var with size go for defines.h. if no defimes.h assume 400
+if [ ! -n "$DATA_SIZE" ]; then
+# get defines.h setting
+DATA_SIZE="$(sed -n '/MAX_DATA_SIZE/s/#define[[:blank:]]MAX_DATA_SIZE//p' \
+../source/defines.h 2>/dev/null | tr -cd '[:alnum:]')"
+ if [ ! -n "$DATA_SIZE" ]; then
+echo -e "Unable to obtain configured maximum reply lenght allowed.
+Assuming default value of 400 characters...\n
+If this is not the setting you actually have please press CTRL + C to abort
+and write $0 -data_size to set the default for this utility.\n"
+DATA_SIZE=400
+SLEEP 2
+ else
+ echo -e "Your defined maximum reply length is "$DATA_SIZE" characters."
+ fi
+fi
+
+# get max reply length on file
+ACTUAL_DATA_SIZE=$(cat $TMP-DB.WORK.FILE | cut -d' ' -f2- | wc -L \
+| tr -cd '[:alnum:]')
+
+#  size+1 - ( if DATA_SIZE this will put it as 401
+# because what we need is remove all exceeding max length, i.e, 401&+)
+DATA_SIZE_PLUS_1=`expr $DATA_SIZE + 1`
+
+# if length in file is greater than max size... work on it
+if [ "$ACTUAL_DATA_SIZE" -gt "$DATA_SIZE" ]; then
+echo -e "---- Currently your longest reply (length) is: \
+"$ACTUAL_DATA_SIZE" characters ----\n"
+SLEEP 1
+echo -e "Please wait while the total number of topics exceeding maximum
+character lenght allowed is being obtained..."
+SLEEP 1
+
+# get length after 1st whitespace//assuming there's no whitspace in front
+# cat $TMP-DB.WORK.FILE | grep -En '^[^ ]* +(.{400,})$'
+cat $TMP-DB.WORK.FILE | grep -En '^ *[^ ]* +.{'$DATA_SIZE_PLUS_1',}$' \
+> $TMP-data.size.all
+
+if [ -s $TMP-data.size.all ]; then # we have entries in fault
+
+# get only line numbers ( will be needed to report file )
+cut -d: -f1 $TMP-data.size.all > $TMP-data.size.all.numb
+
+# get number of lines on working file (later will be used to check if
+# operations went right
+NUM_LINES_B4=$(cat "$TMP-DB.WORK.FILE" | wc -l | tr -cd '[:alnum:]')
+
+# count total before deletion
+NUM_REPLIES_EXCEEDING_SIZE=$(cat "$TMP-data.size.all.numb" | wc -l \
+| tr -cd '[:alnum:]')
+
+echo -e "-     Total entries with reply length exceeding size found: \
+"$NUM_REPLIES_EXCEEDING_SIZE"\n"
+SLEEP 2
+
+echo "Preparing for deletion process..."
+SLEEP 1
+echo "sed '
+`cat $TMP-data.size.all | sed s/:/d' '/ | cut -d' ' -f1`
+' $TMP-DB.WORK.FILE > $TMP-data.size.deleted" >> $TMP-data.size.lines.to.del
+
+echo -e "Removing it ..."
+SLEEP 1
+# execute
+. $TMP-data.size.lines.to.del
+# move it to working file
+mv -f $TMP-data.size.deleted $TMP-DB.WORK.FILE
+
+entry_pl=$(if [ "$NUM_REPLIES_EXCEEDING_SIZE" -gt "1" ]; \
+then echo entries; else echo entry; fi)
+echo -e "Removed "$NUM_REPLIES_EXCEEDING_SIZE" "$entry_pl" from \
+"$ORIG_FILE"!\n"
+
+fi # end of -s $TMP-data.size.all
+
+else # "$ACTUAL_DATA_SIZE" is not greater than "$DATA_SIZE"
+echo -e "\nYour replies length is within your current configuration
+value, which is "$DATA_SIZE" characters maximum.\n\n"
+SLEEP 3
+fi
+
+# REPORT
+if [ -s $TMP-data.size.all ]; then
+# first check from the working file
+NUM_LINES_AFTER=$(cat "$TMP-DB.WORK.FILE" | wc -l | tr -cd '[:alnum:]')
+NUM_LINES_NOW="$(expr "$NUM_LINES_B4" - "$NUM_LINES_AFTER")"
+NUM_LINES_DIFF="$(expr "$NUM_REPLIES_EXCEEDING_SIZE" - "$NUM_LINES_NOW")"
+
+# report head top
+echo "REPLIES LENGTH" > $TMP-DATA_SIZE.rep.head
+
+if [ "$NUM_LINES_NOW" != "0" ]; then # means at least some were removed
+# check if are the same as the ones that were supposed too
+ if [ "$NUM_LINES_NOW" = "$NUM_REPLIES_EXCEEDING_SIZE" ]; then # looks ok
+# report header
+echo "-  Allowed length = "$DATA_SIZE"     \
+Maximum lenght detected = "$ACTUAL_DATA_SIZE"
+-    Entries exceeding configured value = "$NUM_REPLIES_EXCEEDING_SIZE"
+-    Total entries removed = "$NUM_LINES_NOW""
+    
+# report body
+echo -e "\n===== Removed REPLIES LENGTH exceeding allowed value on \
+"$ORIG_FILE"
+`cat $TMP-data.size.all | cut -d: -f2-`
+________________ end of replies with maximum length exceeded \
+__________________" > $TMP-DATA_SIZE.rep.body
+
+ else # something wrong, diff of lines on working file don't match total 2b del
+ echo "$NUM_LINES_DIFF entries were not removed! Please check report file." 
+ fi
+
+else # final lines count on working file is = 0 so no lines were removed
+echo "Something went wrong... not possible to remove entries.
+Check report file."
+fi 
+
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else # (-s $TMP-data.size.all) no entries in fault
+echo -e "No replies exceeding maximum length allowd found!"
+fi >> $TMP-DATA_SIZE.rep.head
+
+SLEEP 5
+}
+
+# check for entries without related rdb files
+CHECK_RDBS () {
+clear
+echo -e "$PNCI* RDB links and files *\n
+Checking for RDB entries on $ORIG_FILE ...\n"
+SLEEP 1
+
+# extract possible rdbs links
+sed -n /[[:space:]]~[[:alnum:]]/p "$TMP-DB.WORK.FILE" > $TMP-rdb.lines.all
+
+if [ -s $TMP-rdb.lines.all ]; then
+# count total
+rdb_lines_all=$(cat $TMP-rdb.lines.all | wc -l | tr -cd '[:alnum:]')
+# examine which ones are really rdb links and extract uniques
+count="0"
+while [ $count != "$rdb_lines_all" ]; do
+count=`expr $count + 1`
+# just a progress ind.
+clear; echo -e "$PNCI* RDB links and files *\n
+     Examining existent RDB links on your $ORIG_FILE...\n"
+     if [ $count != "$rdb_lines_all" ]; then
+     echo -e "     [`expr $count \* 100 / $rdb_lines_all`%] done\n"
+     fi
+# extract line by line (all lines even ones that are not rdbs)
+rdb_line="$(sed -n "$count"p $TMP-rdb.lines.all)"
+# if = 2 words -> is a rdb
+if [ "`echo "$rdb_line" | wc -w | tr -cd '[:alnum:]'`" = "2" ]; then
+# put it on a list
+echo "$rdb_line" >> $TMP-rdb.lines.with.repeats
+fi
+done
+SLEEP 3
+fi # end of if there are entries with leading ~
+
+# if there are indeed rdb links (count uniques, repeats and extract only links)
+if [ -s $TMP-rdb.lines.with.repeats ]; then
+# count total (with) repeats
+rdb_lines_with_repeats=$(cat $TMP-rdb.lines.with.repeats | wc -l \
+| tr -cd '[:alnum:]')
+entry_s=$(if [ "$rdb_lines_with_repeats" -gt "1" ]; then echo entries
+else echo entry; fi)
+echo -e "     So far detected "$rdb_lines_with_repeats" "$entry_s" \
+with RDB links..."
+SLEEP 1
+# extract only links; sort; uniq
+cat $TMP-rdb.lines.with.repeats | cut -d ' ' -f2 | sort | uniq > \
+$TMP-rdb.lines.uniques
+# count total uniques
+rdb_lines_uniques=$(cat $TMP-rdb.lines.uniques | wc -l | tr -cd '[:alnum:]')
+link_s=$(if [ "$rdb_lines_uniques" -gt "1" ]; then echo links
+else echo link; fi)
+echo -e "     Detected "$rdb_lines_with_repeats" "$entry_s" with \
+"$rdb_lines_uniques" unique RDB "$link_s"!"
+SLEEP 1
+fi
+
+# check which rdb files exist on ../dat/
+ls ../dat/*.rdb > $TMP-rdb.files.all
+# remove whut and dunno, not needed for first operation
+grep -vw whut.rdb $TMP-rdb.files.all > $TMP-rdb.files.tmp
+grep -vw dunno.rdb $TMP-rdb.files.tmp > $TMP-rdb.files
+# count total rdb files for info (before matching)
+if [ -s $TMP-rdb.files ]; then
+rdb_files_b4=$(cat $TMP-rdb.files | wc -l | tr -cd '[:alnum:]')
+file_s=$(if [ "$rdb_files_b4" -gt "1" ]; then echo files; else echo file; fi)
+echo -e "     Found "$rdb_files_b4" RDB "$file_s" on ..dat/ directory!"
+SLEEP 3
+
+# check which links don't have a file
+if [ ! -z "$rdb_lines_uniques" ]; then
+count="0"
+while [ $count != "$rdb_lines_uniques" ]; do
+count=`expr $count + 1`
+# extract line by line
+rdb_line="$(sed -n "$count"p $TMP-rdb.lines.uniques)"
+# just a progress ind.
+clear; echo -e "$PNCI* RDB links and files *\n
+     Comparing RDB links from your $ORIG_FILE with \
+existent RDB files.\n"
+echo "     Processing RDB link: $rdb_line ..."
+     if [ $count != "$rdb_lines_uniques" ]; then
+     echo -e "     [`expr $count \* 100 / $rdb_lines_uniques`%] done\n"
+     else
+     echo -e "     Done!\n"; fi
+# extract rdb link with no leading ~
+rdb_link="`echo "$rdb_line" | cut -d' ' -f2 | cut -d~ -f2`"
+# compare with the rdb files
+# # # test this one better # # #
+if [ `grep -w $rdb_link $TMP-rdb.files` ]; then
+# means there is a corresponding file
+# remove that file from files list so the ones left need to be
+# checked because might not have any entry on info2
+grep -wv $rdb_link $TMP-rdb.files > $TMP-rdb.files.tmp
+mv -f $TMP-rdb.files.tmp $TMP-rdb.files
+else
+# there is no match; put the line on a file for deletion and report
+# first all corresponding link lines with respective number
+grep -nw "[[:space:]]*$rdb_line" "$TMP-DB.WORK.FILE" 2>/dev/null >> \
+$TMP-rdb.nomatch.all
+# then only that link
+echo "$rdb_line" >> $TMP-rdb.nomatch.unique
+fi
+done
+SLEEP 3
+
+fi # if [ ! -z "$rdb_lines_uniques" ]; then
+fi # if [ -s $TMP-rdb.files ]; then
+
+# count total files without match (the ones left out)
+if [ -s "$TMP-rdb.files" ]; then
+rdb_files=$(cat $TMP-rdb.files | wc -l | tr -cd '[:alnum:]')
+echo -e "     Found "$rdb_files" RDB files without any match.\n"
+SLEEP 2
+fi
+
+if [ -s $TMP-rdb.nomatch.unique ]; then
+# count total unique link lines (without repeats) without match
+rdb_nomatch_unique=$(cat $TMP-rdb.nomatch.unique | wc -l | tr -cd '[:alnum:]')
+echo "     Found "$rdb_nomatch_unique" unmatched unique RDB links."
+SLEEP 1
+# count total links lines (with repeats) without match
+rdb_nomatch_all=$(cat $TMP-rdb.nomatch.all | wc -l | tr -cd '[:alnum:]')
+echo "     (A total of "$rdb_nomatch_all" related entries on $ORIG_FILE)"
+SLEEP 1
+# prepare a file for deletion and report process
+cut -d: -f1 $TMP-rdb.nomatch.all > $TMP-rdb.nomatch.all.linenumb
+
+# extract line/s to be deleted to a tmp file for report
+# sed operations
+echo "sed -n '" > $TMP-rdb.nomatch.all.2.report
+sed 's/$/p/' $TMP-rdb.nomatch.all.linenumb >> $TMP-rdb.nomatch.all.2.report
+echo "' "$TMP-DB.WORK.FILE" >> $TMP-CHECK_RDBS.rep.body.0" >> $TMP-rdb.nomatch.all.2.report
+# execute sed
+. $TMP-rdb.nomatch.all.2.report
+
+# DELETE
+echo -e "\nRemoving broken RDB links...\n"
+SLEEP 3
+# make file with line numbers for deletion
+echo "sed '" > $TMP-rdb.nomatch.all.2.del
+sed 's/$/d/' $TMP-rdb.nomatch.all.linenumb >> $TMP-rdb.nomatch.all.2.del
+echo "' "$TMP-DB.WORK.FILE" > $TMP-rdb.nomatch.all.deleted" \
+>> $TMP-rdb.nomatch.all.2.del
+# execute it
+. $TMP-rdb.nomatch.all.2.del
+# move file w/deletes to working file
+mv -f $TMP-rdb.nomatch.all.deleted $TMP-DB.WORK.FILE
+link_s=$(if [ "$rdb_nomatch_unique" -gt "1" ]; then echo links
+else echo link; fi)
+echo -e "Removed "$rdb_nomatch_unique" unmatched RDB "$link_s" from \
+$ORIG_FILE!"
+
+SLEEP 3
+fi # if there were no non matching rdbs
+# end of main engine
+
+# REPORT
+clear
+echo -e "$PNCI* RDB links and files *\n"
+SLEEP 1
+# report header links
+RDBS_rep_head () {
+echo "RDB LINKS AND FILES" | tee -a $TMP-CHECK_RDBS.rep.head
+if [ ! -z "$rdb_lines_uniques" ]; then
+echo "-  Existent RDB unique links = $rdb_lines_uniques"
+echo "-  Existent RDB entries      = $rdb_lines_with_repeats"
+ if [ ! -z "$rdb_nomatch_unique" ]; then
+echo "-    Total broken unique RDB links         = $rdb_nomatch_unique"
+echo "-    Total entries with broken RDB links   = $rdb_nomatch_all"
+
+# make report body for broken links
+echo -e "===== Removed BROKEN RDB LINKS from "$ORIG_FILE"" > \
+$TMP-CHECK_RDBS.rep.body
+cat $TMP-CHECK_RDBS.rep.body.0 >> $TMP-CHECK_RDBS.rep.body
+echo "________________________ end of broken rdb links \
+________________________" >> $TMP-CHECK_RDBS.rep.body
+ 
+ CHANGED=""$CHANGED" "$ORIG_FILE""
+ else
+ echo "-    No broken RDB links found!"
+ fi
+else
+echo "-  Existent RDB links        = none found" 
+fi
+# report header files
+if [ ! -z "$rdb_files_b4" ]; then
+echo "-  Existent RDB files        = $rdb_files_b4"
+ if [ ! -z "$rdb_files" ]; then
+echo "-    RDB files without any RDB lynk  = $rdb_files (not removed)"
+
+# make report body for files without rdb links
+echo -e "\n===== RDB FILES WITHOUT MATCHING LINKS on $ORIG_FILE
+----< NOT REMOVED from ../dat/ directory - do it yourself >----" >> \
+$TMP-CHECK_RDBS.rep.body
+cat $TMP-rdb.files >> $TMP-CHECK_RDBS.rep.body
+echo "________________ end of rdb files without matching links \
+__________________" >> $TMP-CHECK_RDBS.rep.body
+
+ CHANGED=""$CHANGED" "$ORIG_FILE""
+ fi
+else
+echo "-  Existent RDB files         = none found"
+fi
+}
+RDBS_rep_head | tee $TMP-CHECK_RDBS.rep.head
+if [ ! -z "$rdb_nomatch_unique" ]; then
+echo "(Check section \"Removed BROKEN RDB LINKS from "$ORIG_FILE"\" \
+on this file)" >> $TMP-CHECK_RDBS.rep.head
+fi
+
+SLEEP 5
+}
+
+RANDOM_FILES () {
+clear
+echo -e "$PNCI* Random Phrases Files *\n\n
+Preparing files for checking.\n
+Please wait..."
+
+_RM_RD_TOP_LINE () {
+# function to make a var when Darkbot version is affected on the new format
+# of random files where top line number is not needed anymore.
+# Using backup_randomstuff as a search pattern since it was created on the
+# same revision, RC4, instead of more complicate version extraction.
+if [ "`grep 'BACKUP_RANDOMSTUFF' ../docs/WHATSNEW 2>/dev/null`" ] \
+|| [ "`grep 'BACKUP_RANDOMSTUFF' ../source/defines.h 2>/dev/null`" ]; then
+rm_rd_top_line="y"
+fi
+}
+# this condition is here in case i'll decide to trigger this all process from
+# (also) another utility, like live-update or configure, so revision will
+# be analyzed there
+if [ -z "$rm_rd_top_line" ]; then
+_RM_RD_TOP_LINE
+fi
+
+# make a list of rdb files on dat directory
+ls ../dat/*.rdb > $TMP-rd.files.all
+
+# put random.ini and randomstuff.ini on the list of files to check
+echo "../dat/random.ini" >> $TMP-rd.files.all
+echo "../dat/randomstuff.ini" >> $TMP-rd.files.all
+
+# count total number of lines on the list file
+rd_files_all=$(cat $TMP-rd.files.all | wc -l | tr -cd '[:alnum:]')
+
+SLEEP 2
+# start checking
+count="0"
+while [ $count != "$rd_files_all" ]; do
+count=`expr $count + 1`
+
+# extract line by line
+rd_file="$(sed -n "$count"p $TMP-rd.files.all)"
+rd_file_name="$(echo "$rd_file" | cut -d/ -f3)"
+
+# just a progress ind.
+clear
+echo -e "$PNCI* Random Phrases Files *\n
+`expr "$rd_files_all" - "$count"` of "$rd_files_all" files to check. $(if \
+[ $count != "$rd_files_all" ]; \
+then echo "          [`expr $count \* 100 / $rd_files_all`%] done."; \
+else echo "          Done!"; fi)"
+echo -e "Processing "$rd_file_name"\n"
+echo -e "Checking for missing line feed at the end of file contents ..."
+SLEEP 1
+
+# remove tmp errors file for a new cycle
+rm -f $TMP-random.errors.rep.head
+
+# prepare random.ini
+if [  "$rd_file_name" = "random.ini" ]; then
+grep -wv "^\/\*" ../dat/random.ini > $TMP-random.ini
+grep -w "^\/\*" ../dat/random.ini > $TMP-random.ini.comments
+rd_file="$TMP-random.ini"
+fi
+
+# check numb lines before
+rd_numLinesORI=$(cat $rd_file | wc -l | tr -cd '[:alnum:]')
+echo "     Initial number of lines        = "$rd_numLinesORI""
+
+unset line_feed
+if [ "$(tail -n1 $rd_file | wc -l | tr -cd '[:alnum:]')" = \
+"0" ]; then
+echo "-    Detected missing Line Feed on the last line!" \
+| tee -a $TMP-random.errors.rep.head
+line_feed="y"
+else
+echo "-    No missing line feed detected on the last line!"
+fi
+SLEEP 2
+
+# if detected no line feed actual lines will be + 1
+if [ "$line_feed" = "y" ]; then
+rd_numLinesORI="`expr $rd_numLinesORI + 1`"
+fi
+
+# clean empty lines
+echo -e "\nChecking for empty lines ..."
+SLEEP 1
+grep '.' $rd_file > $TMP-rd_file
+# check numb lines after
+rd_numLinesNOW=$(cat $TMP-rd_file | wc -l | tr -cd '[:alnum:]')
+echo "     Number of lines after checking = "$rd_numLinesNOW""
+
+line_s=`if [ "$rd_numLinesNOW" -gt "1" ]; then echo lines; else echo line; fi`
+# a quick report
+if [ "$rd_numLinesORI" != "$rd_numLinesNOW" ]; then
+rd_numLinesORI_NOW=$(expr "$rd_numLinesORI" - "$rd_numLinesNOW" 2>/dev/null)
+echo "     ### ERROR ###"
+echo "     Total lines before = "$rd_numLinesORI""
+echo "     Total lines after  = "$rd_numLinesNOW""
+echo "-    Removed "$rd_numLinesORI_NOW" empty "$line_s"." \
+| tee -a $TMP-random.errors.rep.head
+echo
+else
+echo -e "-    No empty lines found!\n"
+fi
+if [ "$line_feed" = "y" ]; then echo "     (there is now an additional line \
+due to the missing line feed)"; fi #| tee -a $TMP-random.errors.rep.head
+
+SLEEP 1
+
+echo "Checking top line number and random entries..."
+SLEEP 1
+
+# check number on top
+top_rd_line=  total_rd_lines=
+top_rd_line=$(head -n1 "$TMP-rd_file" | grep ^[0-9])
+total_rd_lines=$(cat "$TMP-rd_file" | wc -l | tr -cd '[:alnum:]')
+
+if [ -n "$top_rd_line" ]; then # there is a number
+
+# if the file being checked is not the only one not in need to remove the line
+# on top with the number, which is random.ini, and Darkbot version being checked
+# is not prior to the one where top line number is not needed anymore... 
+if [  "$rd_file_name" = "random.ini" ] || [ $rm_rd_top_line != "y" ]; then
+# proceed, it's not included on the files to remove top line
+
+# count lines - subtract 1 from total so top line is not counted
+echo "     Existent top line number       = "$top_rd_line""
+rd_lines=$(expr "$total_rd_lines" - 1 2>/dev/null)
+echo "     Total number of random entries = "$rd_lines""
+
+if [ "$top_rd_line" != "$rd_lines" ]; then # is not the same so it's wrong
+echo -e "     ### ERROR ### Total line number is not correct!\n Fixing it..."
+echo "$rd_lines" > $TMP-fixed.rd.lines
+sed 1d "$TMP-rd_file" >> $TMP-fixed.rd.lines
+mv -f $TMP-fixed.rd.lines "$TMP-rd_file"
+echo "-    Replaced top number of random entries from "$top_rd_line" \
+to "$rd_lines"" | tee -a $TMP-random.errors.rep.head
+else
+echo -e "-    Random number correct!\n"
+fi
+
+else # if $rd_file_name isnot "random.ini" & $rm_rd_top_line is y
+# remove top line, it's not needed it on RC4 & +
+sed 1d "$TMP-rd_file" >> $TMP-fixed.rd.lines
+mv -f $TMP-fixed.rd.lines "$TMP-rd_file"
+echo "-    Removed top line with number of random entries, not \
+needed anymore." | tee -a $TMP-random.errors.rep.head
+fi
+
+else # there is no line number on top so make a new file fixed
+if [  "$rd_file_name" = "random.ini" ] || [ $rm_rd_top_line != "y" ]; then
+# proceed, it's not included on the files to remove top line
+echo "     Total number of random entries = "$total_rd_lines""
+echo -e "     ### ERROR ### There is no total lines number on top!
+Fixing it..."
+echo "$total_rd_lines" > $TMP-fixed.rd.lines
+cat "$TMP-rd_file" >> $TMP-fixed.rd.lines
+mv -f $TMP-fixed.rd.lines "$TMP-rd_file"
+echo "-    Added missing total number of random entries of "$total_rd_lines"" \
+| tee -a $TMP-random.errors.rep.head
+else echo "-    Nothing wrong with it. It's not present and it's not needed anymore."
+fi
+fi
+
+# prep file for report with random file name and errors
+if [ -s $TMP-random.errors.rep.head ]; then
+echo "  Random file "$rd_file_name"" >> $TMP-random.errors.rep.head0
+cat $TMP-random.errors.rep.head >> $TMP-random.errors.rep.head0
+
+# prep a file for backup and save
+ # replace random.ini comments
+if [ "$rd_file_name" = "random.ini" ]; then
+cat $TMP-rd_file >> $TMP-random.ini.comments
+mv -f $TMP-random.ini.comments $TMP-$rd_file_name
+else
+mv -f $TMP-rd_file $TMP-$rd_file_name
+fi
+
+# backup file
+echo "echo -e \"\nBacking up "$rd_file_name" before applying the changes...\"
+cp -f $rd_file $rd_file.bak
+echo \"Moving "$rd_file_name"'s working file to it's original location...\"
+mv -f $TMP-$rd_file_name ../dat/$rd_file_name
+SLEEP 1" >> $TMP-RANDOM_FILES
+
+fi
+echo -e "\nDone with "$rd_file_name"."
+SLEEP 3
+done
+
+file_s="`if [ "$rd_files_all" -gt "1" ]; then echo files; else echo file; fi`"
+# REPORT
+# report header
+echo "RANDOM PHRASES FILES CHECK
+- line feed, empty lines and total entries number -
+(only files with errors will be mentioned here)
+Total files checked: $rd_files_all" > $TMP-RANDOM_FILES.rep.head
+if [ -s $TMP-random.errors.rep.head0 ]; then
+cat $TMP-random.errors.rep.head0 >> $TMP-RANDOM_FILES.rep.head
+
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+echo " No errors found on "$rd_files_all" "$file_s" checked!" \
+| tee -a $TMP-RANDOM_FILES.rep.head
+fi
+
+SLEEP 4
+}
+
+SETUP_INI () {
+clear
+echo -e "$PNCI* setup.ini file *\n"
+
+echo -e "\n     - setup.ini file as is before been checked -"
+cat $TMP-DB.WORK.FILE
+SLEEP 3
+
+echo -e "\nChecking contents of setup.ini file...\n"
+SLEEP 1
+
+# count words
+numLinesSETUP=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+# count words
+numWordsSETUP=$(cat $TMP-DB.WORK.FILE | wc -w | tr -cd '[:alnum:]')
+
+# start checking values
+if [ ! "`grep 'NICK=' $TMP-DB.WORK.FILE | cut -d= -f2`" ]; then
+echo "NICK=Darkbot"
+Missing_Parm="$Missing_Parm""NICK "
+else
+grep 'NICK' $TMP-DB.WORK.FILE | tr -d ' '
+fi > $TMP-DB.WORK.FILE.tmp
+
+if [ ! "`grep 'USERID=' $TMP-DB.WORK.FILE | cut -d= -f2`" ]; then
+echo "USERID=darkbot"
+Missing_Parm="$Missing_Parm""USERID "
+else
+grep 'USERID' $TMP-DB.WORK.FILE | tr -d ' '
+fi >> $TMP-DB.WORK.FILE.tmp
+
+if [ ! "`grep 'CHAN=' $TMP-DB.WORK.FILE | cut -d= -f2`" ]; then
+echo "CHAN=#darkbot"
+Missing_Parm="$Missing_Parm""CHAN "
+else
+grep 'CHAN' $TMP-DB.WORK.FILE | tr -d ' ' > $TMP-DB.WORK.FILE.chan
+ # check if there isn't a # before channel name
+ if [ ! `grep 'CHAN=#' $TMP-DB.WORK.FILE.chan` ]; then
+ sed 's/CHAN=/CHAN=#/' $TMP-DB.WORK.FILE.chan > $TMP-DB.WORK.FILE.chan2
+ mv -f $TMP-DB.WORK.FILE.chan2 $TMP-DB.WORK.FILE.chan
+ fi
+ # check if there isn't a # before channel name after a ,
+ if [ `grep ',' $TMP-DB.WORK.FILE.chan` ]; then
+ sed -e 's/,/,#/g' -e 's/##/#/g' $TMP-DB.WORK.FILE.chan > $TMP-DB.WORK.FILE.chan2
+ mv -f $TMP-DB.WORK.FILE.chan2 $TMP-DB.WORK.FILE.chan
+ fi
+ cat $TMP-DB.WORK.FILE.chan >> $TMP-DB.WORK.FILE.tmp
+fi >> $TMP-DB.WORK.FILE.tmp
+	
+if [ ! "`grep 'REALNAME=' $TMP-DB.WORK.FILE | cut -d= -f2`" ]; then
+echo "REALNAME=Download me from http://www.darkbot.org"
+Missing_Parm="$Missing_Parm""REALNAME "
+else
+grep 'REALNAME' $TMP-DB.WORK.FILE
+fi >> $TMP-DB.WORK.FILE.tmp
+	
+if [ ! "`grep 'VHOST=' $TMP-DB.WORK.FILE | cut -d= -f2`" ]; then
+echo "VHOST=0"
+Missing_Parm="$Missing_Parm""VHOST "
+else
+grep 'VHOST' $TMP-DB.WORK.FILE | tr -d ' '
+fi >> $TMP-DB.WORK.FILE.tmp
+
+if [ ! "`grep 'CMDCHAR=' $TMP-DB.WORK.FILE | cut -d= -f2`" ]; then
+echo "CMDCHAR=!"
+Missing_Parm="$Missing_Parm""CMDCHAR "
+else
+grep 'CMDCHAR' $TMP-DB.WORK.FILE | tr -d ' '
+fi >> $TMP-DB.WORK.FILE.tmp
+
+if [ "`grep 'SEEN' $TMP-DB.WORK.FILE`" ]; then
+SEEN=$(grep 'SEEN' $TMP-DB.WORK.FILE | tr -d ' '| cut -d= -f2)
+# check if is 0 or 1
+ if [ "$SEEN" -lt "2" 2>/dev/null ]; then
+ echo "SEEN="$SEEN""
+ else
+ # is not 0 or 1 so check if is off or on
+  if [ `echo "$SEEN" | grep -i "on" 2>/dev/null` ]; then
+  echo "SEEN=1"
+  else
+  echo "SEEN=0"
+  fi
+ fi
+fi >> $TMP-DB.WORK.FILE.tmp
+
+mv -f $TMP-DB.WORK.FILE.tmp $TMP-DB.WORK.FILE
+
+clear
+echo -e "$PNCI* setup.ini file *\n"
+echo -e "\n     - setup.ini file as is after being checked -"
+cat $TMP-DB.WORK.FILE
+echo -e "\n"
+
+echo "     - Summary -"
+
+echo "setup.ini file contents" > $TMP-SETUP_INI.rep.head
+numLinesSETUP_now=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+if [ "$numLinesSETUP_now" -lt "$numLinesSETUP" ]; then
+numLinesSETUP_diff="$(expr "$numLinesSETUP" - "$numLinesSETUP_now")"
+fi
+
+numWordsSETUP_now=$(cat $TMP-DB.WORK.FILE | wc -w | tr -cd '[:alnum:]')
+if [ "$numWordsSETUP_now" -lt "$numWordsSETUP" ]; then
+numWordsSETUP_diff="$(expr "$numWordsSETUP" - "$numWordsSETUP_now")"
+space_s=$(if [ "$numWordsSETUP_diff" -gt "1" ]; then echo spaces;
+else echo space; fi)
+echo "-    Found "$numWordsSETUP_diff" misplaced empty "$space_s"!"
+else echo "-    No misplaced spaces found!"
+fi | tee -a $TMP-SETUP_INI.rep.head
+
+if [ -n "$Missing_Parm" ]; then
+echo "-    Missing values on `echo "$Missing_Parm" | \
+sed s/[[:space:]]/,' '/` (defaults were used)"
+else
+echo "-    Parameters and values looks ok."
+fi | tee -a $TMP-SETUP_INI.rep.head
+
+echo
+if [ -n "$numLinesSETUP_diff" ] || [ -n "$numWordsSETUP_diff" ] || \
+[ -n "$Missing_Parm" ]; then
+echo "setup.ini contents and syntax appears to be correct now." \
+| tee -a $TMP-SETUP_INI.rep.head
+echo -e "\n===== setup.ini file contents before changes
+`cat $ORIG_PATH`
+________________ end of setup.ini file before changes made \
+__________________" > $TMP-SETUP_INI.rep.body
+
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+echo "setup.ini contents and syntax appears to be correct." \
+| tee -a $TMP-SETUP_INI.rep.head
+fi
+echo
+
+SLEEP 5
+}
+
+SERVERS_INI () {
+clear
+echo -e "$PNCI* servers.ini file *\n"
+
+echo -e "     - servers.ini file as is before been checked -"
+cat $TMP-DB.WORK.FILE
+SLEEP 1
+
+# count lines
+numLinesSERVERS=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+# count words
+numWordsSERVERS=$(cat $TMP-DB.WORK.FILE | wc -w | tr -cd '[:alnum:]')
+
+count="0"
+numMissPORTS=0
+while [ $count != "$numLinesSERVERS" ]; do
+count=`expr $count + 1`
+servers_tmp="$(sed -n "$count"p $TMP-DB.WORK.FILE)"
+if [ `echo "$servers_tmp" | grep -E :` ]; then
+server="$(echo $servers_tmp | cut -d: -f1)"
+port="$(echo $servers_tmp | cut -d: -f2 | grep [0-9])"
+else
+server="$(echo $servers_tmp | cut -d' ' -f1)"
+port="$(echo $servers_tmp | cut -d' ' -f2 | grep [0-9])"
+fi
+
+clear
+echo -e "$PNCI* servers.ini file *\n
+Checking entries syntax...\n
+    SERVER - "$server"  
+      PORT - "$port"" 
+
+if [ ! -n "$port" ]; then
+echo -e "#### ERROR #####\nNo port detected.\nDefaulting to 6667..."; SLEEP 1
+Missing_PORTS=`expr $numMissPORTS + 1`
+echo "$server" "6667" >> $TMP-DB.WORK.FILE.tmp
+else
+echo "$servers_tmp" >> $TMP-DB.WORK.FILE.tmp
+fi
+SLEEP 1
+
+done
+SLEEP 1
+
+clear
+echo -e "$PNCI* servers.ini file *\n\n"
+
+if [ -s $TMP-DB.WORK.FILE.tmp ]; then
+mv -f $TMP-DB.WORK.FILE.tmp $TMP-DB.WORK.FILE
+fi
+
+echo "servers.ini file contents" > $TMP-SERVERS_INI.rep.head
+numLinesSERVERS_now=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+if [ "$numLinesSERVERS_now" -lt "$numLinesSERVERS" ]; then
+numLinesSERVERS_diff="$(expr "$numLinesSERVERS" - "$numLinesSERVERS_now")"
+fi
+
+numWordsSERVERS_now=$(cat $TMP-DB.WORK.FILE | wc -w | tr -cd '[:alnum:]')
+if [ "$numWordsSERVERS_now" -lt "$numWordsSERVERS" ]; then
+numWordsSERVERS_diff="$(expr "$numWordsSERVERS" - "$numWordsSERVERS_now")"
+space_s=$(if [ "$numWordsSERVERS_diff" -gt "1" ]; then echo spaces;
+else echo space; fi)
+echo "-    Found "$numWordsSERVERS_diff" misplaced empty "$space_s"!"
+else echo "-    No misplaced spaces found!"
+fi | tee -a $TMP-SERVERS_INI.rep.head
+
+port_s="$(if [ -n "$Missing_PORTS" ] && [ "$Missing_PORTS" -gt "1" ]; then echo "s"; else echo ""; fi)"
+if [ -n "$Missing_PORTS" ]; then
+echo "-    Missing value$port_s on "$Missing_PORTS" port$port_s! \
+(default 6667 were used)"
+else
+echo "-    Apparently there are no errors on entries syntax and PORTS placement."
+fi | tee -a $TMP-SERVERS_INI.rep.head
+echo
+
+if [ -n "$numLinesSERVERS_diff" ] || [ -n "$numWordsSERVERS_diff" ] || \
+[ -n "$Missing_PORTS" ]; then
+echo "servers.ini contents and syntax appears to be correct now."
+echo -e "\n===== servers.ini file contents before changes
+`cat $ORIG_PATH`
+________________ end of servers.ini file before changes made \
+__________________" > $TMP-SERVERS_INI.rep.body
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+echo "servers.ini contents and syntax appears to be correct." \
+| tee -a $TMP-SERVERS_INI.rep.head
+fi
+echo
+
+SLEEP 5
+}
+
+USERLIST_DB () {
+# just a basic check at this stage
+# to do: check repeated IPs at the end of the process besides repeated 
+# entries at start; optimize all integers check
+clear
+echo -e "$PNCI* userlist.db file *\n"
+
+# count lines
+numLinesUSERLIST=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+usrlst_removed="0"; usrlst_errors="0"; usrlst_errors_b4="0"
+count=0
+while [ "$count" != "$numLinesUSERLIST" ]; do
+count=`expr  "$count" + 1`
+
+# get complete line
+usrlst_entry="$(sed -n "$count"p $TMP-DB.WORK.FILE)"
+
+clear
+echo -e "$PNCI* userlist.db file *\n"
+echo -e "[`expr "$numLinesUSERLIST" - "$count"`] entries to be checked.\n"
+echo -e "Verifying syntax on entry:\n$usrlst_entry\n"
+
+# get complete line
+#usrlst_entry="$(sed -n "$count"p $TMP-DB.WORK.FILE)"
+
+# if no @ bypass to later remove entry
+if [ "`echo "$usrlst_entry" | cut -d' ' -f2 | grep '@'`" ]; then
+
+# check if 1st field or after a , starts with # ( #channel or #*)
+usrlst_chan="$(echo "$usrlst_entry" | cut -d' ' -f1)"
+usrlst_chan0="$(echo "$usrlst_chan" | sed -e s/,/,'#'/g -e s/'##'/'#'/g)"
+if [ ! "`echo "$usrlst_chan0" | grep -E '^\#'`" ]; then
+usrlst_chan0="#"$usrlst_chan0""
+fi
+if [ "$usrlst_chan" != "$usrlst_chan0" ]; then
+echo -e "#### ERROR ####\n    Channel field incorrect! \
+Missing channel prefix  '#'. Adding it...\n"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+usrlst_chan="$usrlst_chan0"
+fi
+
+# get user mask
+usrlst_mask="$(echo "$usrlst_entry" | cut -d' ' -f2)"
+if [ "`echo "$usrlst_mask" | grep '\.$'`" ]; then
+echo -e "#### ERROR ####\n    Unexpected end of user IP! Adding '*'...\n"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+usrlst_mask="$(echo ""$usrlst_mask"*")"
+fi
+if [ "`echo "$usrlst_mask" | grep -E '\.\.'`" ]; then
+echo -e "#### ERROR ####\n    Incorrect syntax on user IP '..'. Fixing it...\n"
+usrlst_mask="$(echo "$usrlst_mask" | sed 's/\.\./\./')"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+usrlst_ip="@$(echo "$usrlst_mask" | cut -d@ -f2)"
+
+#check if 2nd string starts with * (*userid) not ~ | not *!
+usrlst_userid="$(echo "$usrlst_entry" | cut -d' ' -f2 | cut -d@ -f1)"
+if [ "`echo "$usrlst_userid" | grep '~'`" ]; then
+echo -e "#### ERROR ####\n    USER ID field incorrect! Unnecessary leading ~\n"
+usrlst_userid="$(echo "$usrlst_userid" | sed 's/~//')"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+if [ "`echo "$usrlst_userid" | grep -E '^\*!'`" ]; then
+echo -e "#### ERROR ####\n    USER ID field incorrect! Disallowed leading characters *!\n"
+usrlst_userid="$(echo "$usrlst_userid" | sed 's/\*\!//')"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+if [ ! "`echo "$usrlst_userid" | grep '^\*'`" ]; then
+echo -e "#### ERROR ####\n    USER ID field incorrect! Missing leading *\n"
+usrlst_userid="$(echo "*"$usrlst_userid"")"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+# check if 3rd colum is 1 2 or 3 (levels)
+usrlst_level="$(echo "$usrlst_entry" | cut -d' ' -f3)"
+if [ ! "`echo "$usrlst_level" | grep '^[0-3]$'`" ]; then
+echo -e "#### ERROR ####\n    USER Access level field incorrect! Using 1...\n"
+usrlst_level="1"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+# check if 4th column is an integer (times bot saw user)
+usrlst_seen="$(echo "$usrlst_entry" | cut -d' ' -f4)"
+unset testinteger
+testinteger="$(expr "$usrlst_seen" - "0" 2>/dev/null)"
+if [ -z "$testinteger" ]; then
+echo -e "#### ERROR ####\n    Number of times seen field is not an integer! \
+Fixing it...\n"
+usrlst_seen="0"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+# check if 5th column is password
+usrlst_pass="$(echo "$usrlst_entry" | cut -d' ' -f5)"
+if [ -z "$usrlst_pass" ]; then
+echo -e "#### ERROR ####\n    Missing password field! Using password 0...\n"
+usrlst_pass="0"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+# check if 6th column is 0 or setinfo
+usrlst_setinfo="$(echo "$usrlst_entry" | cut -d' ' -f6-)"
+if [ -z "$usrlst_setinfo" ]; then
+echo -e "#### ERROR ####\n    Missing SETINFO field! Using 0...\n"
+usrlst_setinfo="0"
+usrlst_errors="$(expr "$usrlst_errors" + 1)"
+fi
+
+usrlst_new=""$usrlst_chan" "$usrlst_userid""$usrlst_ip" "$usrlst_level" \
+"$usrlst_seen" "$usrlst_pass" "$usrlst_setinfo""
+
+echo "$usrlst_new" >> $TMP-USERLIST.DB
+
+if [ "$usrlst_errors" -gt "$usrlst_errors_b4" ]; then
+echo -e "Corrected entry:"
+echo "----" >> $TMP-USERLIST_DB.rep.body0
+echo "$usrlst_entry" >> $TMP-USERLIST_DB.rep.body0
+echo "$usrlst_new" | tee -a $TMP-USERLIST_DB.rep.body0
+SLEEP 4
+fi
+
+else # no @ on IP
+echo -e "#### ERROR ####\n    Unable to obtain IP. Entry is being removed...\n"
+echo "$usrlst_entry" >> $TMP-USERLIST_DB.rep.body1
+usrlst_removed="$(expr "$usrlst_removed" + 1)"
+SLEEP 4
+fi
+
+usrlst_errors_b4="$usrlst_errors"
+
+done
+usrlst_uniq_errors="$(expr "`cat $TMP-USERLIST_DB.rep.body0 2>/dev/null | wc -l | tr -cd '[:alnum:]'`" / 3)"
+
+# if no $TMP-USERLIST.DB means all entries were irrecoverable/wrong / missing @
+if [ ! -s $TMP-USERLIST.DB ]; then
+touch $TMP-USERLIST.DB
+no_entries=y # since file is 0 just a var to avoid 2nd round of dup check
+fi
+mv -f $TMP-USERLIST.DB $TMP-DB.WORK.FILE
+
+# REPORT
+# start gathering results
+# get/accumulate results from 1st passage of DUP_ENTRIES
+if [ -s $TMP.dup.entries ]; then
+dupentries_lines_1="$dupentries_lines"
+dupentries_lin_rem_1="$dupentries_lin_rem"
+cat $TMP.dup.entries >> $TMP.dup.entries_1
+fi
+# checking dup entries again if/after changes
+if [ -z "$no_entries" ]; then
+if [ "$usrlst_uniq_errors" -gt "0" ] || [ "$usrlst_removed" -gt "0" ]; then
+clear
+echo -e "$PNCI* userlist.db file *\n
+Doing a quick check for duplicate entries again on "$ORIG_FILE" after
+syntax changes made"
+SLEEP 2
+DUP_ENTRIES
+fi
+fi
+
+# get total entries after changes
+numLinesUSERLIST_after=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+error_s="$(if [ "$usrlst_errors" -gt "1" ]; then echo errors; else echo error; fi)"
+entry_s="$(if [ "$usrlst_uniq_errors" -gt "1" ]; then echo entries; else echo entry; fi)"
+clear
+echo -e "$PNCI* userlist.db file *\n"
+echo "userlist.db file contents" > $TMP-USERLIST_DB.rep.head
+echo "-  Total entries before checking: "$numLinesUSERLIST_ORI"    \
+After: "$numLinesUSERLIST_after""| tee -a $TMP-USERLIST_DB.rep.head
+
+if [ "$usrlst_uniq_errors" -gt "0" ] || [ "$usrlst_removed" -gt "0" ]; then
+if [ "$usrlst_uniq_errors" -gt "0" ]; then
+echo "-    Corrected a total of "$usrlst_errors" "$error_s" on \
+"$usrlst_uniq_errors" "$entry_s"."
+fi
+if [ -s $TMP-USERLIST_DB.rep.body0 ]; then
+echo -e "===== Fixed userlist.db errors
+(first entry on each section corresponds to the one with errors)
+`cat $TMP-USERLIST_DB.rep.body0`
+_______________________ end of fixed userlist.db entries \
+_______________________" > $TMP-USERLIST_DB.rep.body
+fi
+if [ "$usrlst_removed" -gt "0" ]; then
+echo "-    Removed entries due to missing or irrecoverable IP: "$usrlst_removed""
+echo -e "-=-=- Removed entries from userlist.db due to irrecoverable IP
+`cat $TMP-USERLIST_DB.rep.body1`
+_______________________ end of removed userlist.db entries \
+_______________________" >> $TMP-USERLIST_DB.rep.body
+fi
+
+else
+echo "-    No syntax errors found."
+fi | tee -a $TMP-USERLIST_DB.rep.head
+
+# dup_entries
+if [ -s $TMP.dup.entries ]; then
+dupentries_lines="$(expr "$dupentries_lines" + "$dupentries_lines_1")"
+dupentries_lin_rem="$(expr "$dupentries_lin_rem" + "$dupentries_lin_rem_1")"
+dupentries_lin_rem="$(expr "$dupentries_lin_rem" + "$dupentries_lin_rem_1")"
+cat $TMP.dup.entries >> $TMP.dup.entries_1
+
+echo "DUPLICATE ENTRIES on "$ORIG_FILE"
+-    Number of entries with repetitions: "$dupentries_lines"
+-    Number of repetitions found: "$dupentries_lin_rem"
+-    Number of lines removed: "$dupentries_lin_rem"
+ (Check section \"Removed DUPLICATE ENTRIES from $ORIG_FILE\" on this file)"
+echo -e "-=-=- Removed DUPLICATE ENTRIES from "$ORIG_FILE"" >> \
+$TMP-USERLIST_DB.rep.body
+cat $TMP.dup.entries_1 >> $TMP-USERLIST_DB.rep.body
+echo "_______________________ end of duplicate entries on "$ORIG_FILE"\
+________________________" >> $TMP-USERLIST_DB.rep.body
+CHANGED=""$CHANGED" "$ORIG_FILE""
+else
+
+echo "-    No repeated entries found!"
+fi | tee -a $TMP-USERLIST_DB.rep.head
+rm -f $TMP.dup.entries
+rm -f $TMP-DUP_ENTRIES.$ORIG_FILE.rep.head
+rm -f $TMP-DUP_ENTRIES.$ORIG_FILE.rep.body
+SLEEP 3
+# end of dup_entries report
+
+if [ "$usrlst_uniq_errors" -gt "0" ] || [ "$usrlst_removed" -gt "0" ]; then
+CHANGED=""$CHANGED" "$ORIG_FILE""
+fi
+SLEEP 4
+}
+
+# NOT IMPLEMENTED YET
+REMOVE_PREMADE_DBS () {
+echo $null
+}
+
+## END OF MAIN FUNCTIONS ##
+###########################
+
+###########
+## FILES ##
+################ PREP AND START
+FILES_PREP () {
+clear
+echo -e "$PNCI\n-- Preparing $ORIG_FILE file --\n\nUsing $ORIG_FILE in a safe
+temporary working file..."
+SLEEP 1
+
+if [ ! -s $ORIG_PATH ]; then
+touch $ORIG_PATH
+ if [ "$ORIG_PATH" = "../dat/userlist.db" ]; then
+echo "#channel *user_ident@*user.ip.net 1 0 password_here \
+You need to !setinfo" >> "$ORIG_PATH"
+ fi
+fi
+
+# copy orig file to working file
+cp -f $ORIG_PATH $TMP-DB.WORK.FILE
+
+if [ "$external_db" = "DB_MASTER" ]; then
+numLinesDB_MASTER=$(cat $COMMON_TMP/TMP-DB_MASTER | wc -l | tr -cd '[:alnum:]')
+echo -e "\nMoving downloaded database to the info2.db working file..."
+cat $COMMON_TMP/TMP-DB_MASTER >> $TMP-DB.WORK.FILE
+info2db_lines="$(if [ "$numLines_info2_ORI" = "0" ]; then
+echo "info2.db empty file."; else
+echo "initial "$numLines_info2_ORI" info2.db lines,\nmaking a total of \
+`expr "$numLinesDB_MASTER" + "$numLines_info2_ORI"` entries to be checked."; fi)"
+echo -e "\n"$numLinesDB_MASTER" new entries added to your "$info2db_lines""
+CHANGED=""$CHANGED" "$ORIG_FILE""
+SLEEP 4
+fi
+
+numLinesORI=$(cat $TMP-DB.WORK.FILE | wc -l | tr -cd '[:alnum:]')
+SLEEP 3
+}
+
+# files start
+START_INFO2 () {
+ORIG_FILE="info2.db"
+ORIG_PATH="../dat/info2.db"
+numLines_info2_ORI=$(cat $ORIG_PATH 2>/dev/null | wc -l | tr -cd '[:alnum:]')
+sleep 2
+# if file is not empty ...
+if [ "$numLines_info2_ORI" != "0" ] || [ -n "$external_db" ]; then
+FILES_PREP
+LINE_FEED; EMPTY_LINES; INCOMPL_ENTRIES; DUP_ENTRIES; DUP_TOPICS
+TOPIC_SIZE; DATA_SIZE; CHECK_RDBS
+ if echo "$CHANGED" | grep -q info2.db 1>/dev/null; then
+ mv -f $TMP-DB.WORK.FILE $TMP-INFO2.DB
+ fi
+else # if is empty
+clear
+echo -e "$PNCI\ninfo2.db file is empty. There is no need to check it!
+Add topics and replies to it so your Darkbot could "talk".\n"
+SLEEP 3
+fi
+
+}
+START_SERVERS () {
+ORIG_FILE="servers.ini"
+ORIG_PATH="../dat/servers.ini"
+numLinesORI=$(cat $ORIG_PATH 2>/dev/null | wc -l | tr -cd '[:alnum:]')
+# if file is not empty ...
+if [ "$numLinesORI" != "0" ]; then
+FILES_PREP
+LINE_FEED; EMPTY_LINES;
+SERVERS_INI
+ if echo "$CHANGED" | grep -q servers.ini 1>/dev/null; then
+ mv -f $TMP-DB.WORK.FILE $TMP-SERVERS.INI
+ fi
+else # if is empty
+clear
+echo -e "$PNCI\nservers.ini file is empty. There is no need to check it!
+You'll need to add servers so your Darkbot can connect to IRC.\n"
+SLEEP 3
+fi
+}
+START_SETUP () {
+ORIG_FILE="setup.ini"
+ORIG_PATH="../dat/setup.ini"
+numLinesORI=$(cat $ORIG_PATH 2>/dev/null | wc -l | tr -cd '[:alnum:]')
+FILES_PREP
+LINE_FEED; EMPTY_LINES;
+SETUP_INI
+if echo "$CHANGED" | grep -q setup.ini 1>/dev/null; then
+mv -f $TMP-DB.WORK.FILE $TMP-SETUP.INI
+fi
+}
+START_PERFORM () {
+ORIG_FILE="perform.ini"
+ORIG_PATH="../dat/perform.ini"
+numLinesORI=$(cat $ORIG_PATH 2>/dev/null | wc -l | tr -cd '[:alnum:]')
+# if file is not empty ...
+if [ "$numLinesORI" != "0" ]; then
+FILES_PREP
+LINE_FEED; EMPTY_LINES
+if echo "$CHANGED" | grep -q perform.ini 1>/dev/null; then
+mv -f $TMP-DB.WORK.FILE $TMP-PERFORM.INI
+fi
+else # if is empty
+clear
+echo -e "$PNCI\nperform.ini file is empty. There is no need to check it!\n"
+SLEEP 3
+fi
+}
+START_USERLIST () {
+ORIG_FILE="userlist.db"
+ORIG_PATH="../dat/userlist.db"
+numLinesUSERLIST_ORI="$(cat $ORIG_PATH 2>/dev/null | wc -l | tr -cd '[:alnum:]')"
+numLinesORI="$numLinesUSERLIST_ORI"
+# if file is not empty ...
+if [ "$numLinesORI" != "0" ]; then
+FILES_PREP
+LINE_FEED; EMPTY_LINES; DUP_ENTRIES
+USERLIST_DB
+if echo "$CHANGED" | grep -q userlist.db 1>/dev/null; then
+mv -f $TMP-DB.WORK.FILE $TMP-USERLIST.DB
+fi
+else # if is empty
+clear
+echo -e "$PNCI\nuserlist.db file is empty. There is no need to check it!
+Use AddUser to add yourself as Darkbot administrator."
+SLEEP 3
+fi
+}
+START_RANDOM () {
+RANDOM_FILES
+}
+## END OF FILES PREP AND START ##
+#################################
+
+####################
+## UPDATE PROCESS ##
+FILES_BACKUP () {
+#      backup file
+clear
+echo -e "$PNCI\n- ORIGINAL FILES UPDATE -\n"
+if [ -s "$2" ]; then
+echo -e "Backing up your current "$1" before updating it \
+with the changes made...\n"
+cp -fp "$2".bak.1 "$2".bak.2 2>/dev/null
+cp -fp "$2".bak.0 "$2".bak.1 2>/dev/null
+mv -f  "$2" "$2".bak.0
+echo "Your most current $ORIG_FILE backup is "$2".bak.0"
+if [ -e "$2".bak.1 ]; then
+echo "You still have a previous backup on "$2".bak.1"
+fi
+if [ -e "$2".bak.2 ]; then
+echo "and an older one as "$2".bak.2"
+fi
+fi
+SLEEP 3
+}
+
+FILES_UPDATE () {
+if [ -n "$CHANGED" ]; then
+count=10; counter=1
+while [ $count != "$counter" ]; do
+count=`expr  "$count" - 1`
+clear
+echo -e "$PNCI\n- ORIGINAL FILES UPDATE -\n
+The changes made will be effectively updated now.
+If you do not want those changes to be saved to the original files press
+CTRL + C now to abort.\n
+The update process will start in ["$count"] seconds...\n"
+SLEEP 1
+done
+
+no_changes () {
+#if echo $ci_files | grep $1; then
+if [ ! -s $TMP-no.changes ]; then
+echo -e "clear\necho \"$PNCI\n- ORIGINAL FILES UPDATE -\n\"" > $TMP-no.changes
+fi
+if echo "$ci_files" | grep -i `echo "$1" | cut -d. -f1`; then
+echo -e "echo \"No changes made on your $1 $2.\"
+SLEEP 1" >> $TMP-no.changes
+fi
+}
+
+if [ -s $TMP-INFO2.DB ]; then
+FILES_BACKUP info2.db ../dat/info2.db
+echo -e "\nMoving working file to ../dat/info2.db ...\n"
+mv -f $TMP-INFO2.DB ../dat/info2.db
+SLEEP 1
+else
+no_changes info2.db file
+fi
+
+if [ -s $TMP-SERVERS.INI ]; then
+FILES_BACKUP servers.ini ../dat/servers.ini
+echo -e "\nMoving working file to ../dat/servers.ini ...\n"
+mv -f $TMP-SERVERS.INI ../dat/servers.ini
+SLEEP 1
+else
+no_changes servers.ini file
+fi
+
+if [ -s $TMP-SETUP.INI ]; then
+FILES_BACKUP setup.ini ../dat/setup.ini
+echo -e "\nMoving working file to ../dat/setup.ini ...\n"
+mv -f $TMP-SETUP.INI ../dat/setup.ini
+SLEEP 2
+else
+no_changes setup.ini file
+fi
+
+if [ -s $TMP-PERFORM.INI ]; then
+FILES_BACKUP perform.ini ../dat/perform.ini
+echo -e "\nMoving working file to ../dat/perform.ini ...\n"
+mv -f $TMP-PERFORM.INI ../dat/perform.ini
+SLEEP 2
+else
+no_changes perform.ini file
+fi
+
+if [ -f $TMP-USERLIST.DB ]; then
+FILES_BACKUP userlist.db ../dat/userlist.db
+echo -e "\nMoving working file to ../dat/userlist.db ...\n"
+mv -f $TMP-USERLIST.DB ../dat/userlist.db
+SLEEP 2
+else
+no_changes userlist.db file
+fi
+
+if [ -s $TMP-RANDOM_FILES ]; then
+# do some cosmetic work on the file for backups, only on these random files
+echo -e "clear\n echo -e \"$PNCI\n- ORIGINAL FILES UPDATE -\n\"" > $TMP-RANDOM_FILES_TMP
+cat $TMP-RANDOM_FILES >> $TMP-RANDOM_FILES_TMP
+mv -f $TMP-RANDOM_FILES_TMP $TMP-RANDOM_FILES
+echo "SLEEP 1" >> $TMP-RANDOM_FILES
+# go for it
+echo -e "\nMoving random files to dat directory...\n"
+. $TMP-RANDOM_FILES
+SLEEP 2
+else
+no_changes random files
+fi
+
+# execute no changes messages
+if [ -s $TMP-no.changes ]; then
+. $TMP-no.changes
+fi
+
+fi # end of count down to update changes
+SLEEP 4
+}
+
+## END OF UPDATE PROCESS ##
+###########################
+
+############
+## REPORT ##
+INTEGRITY_REPORT () {
+if [ -s $ci_report ]; then
+cp -fp $ci_report $ci_report.old
+fi
+_head_separator_ () {
+echo "----------------------------------\
+---------------------------------------" >> $ci_report
+}
+_head_entry_ () {
+cat $1 >> $ci_report 2>/dev/null
+}
+# obtain numb of lines after process done
+echo -e "$PNCI* Integrity Check Report File *
+  Generated on `date`
+=========================================================================
+|                                SUMMARY                                |
+==================================     ==================================" \
+> $ci_report
+_head_separator_
+info2LinesFinal=$(cat ../dat/info2.db 2>/dev/null | wc -l | tr -cd '[:alnum:]')
+echo "TOTAL LINES/ENTRIES on info2.db: \
+Before = "$numLines_info2_ORI"      Now = "$info2LinesFinal"\
+`if [ "$line_feed" = "y" ]; then echo -e "\n(There is one \
+additional line due to an added line feed)"; fi`" >> $ci_report
+_head_entry_ $TMP-LINE_FEED.info2.db.rep.head
+_head_entry_ $TMP-EMPTY_LINES.info2.db.rep.head
+_head_entry_ $TMP-INCOMPL_ENTRIES.rep.head
+_head_entry_ $TMP-DUP_ENTRIES.info2.db.rep.head
+_head_entry_ $TMP-DUP_TOPICS.rep.head
+_head_entry_ $TMP-TOPIC_SIZE.rep.head
+_head_entry_ $TMP-DATA_SIZE.rep.head
+_head_entry_ $TMP-CHECK_RDBS.rep.head
+_head_separator_ # end of info2.db
+_head_entry_ $TMP-RANDOM_FILES.rep.head
+_head_separator_ # servers.ini
+_head_entry_ $TMP-SERVERS_INI.rep.head
+_head_entry_ $TMP-LINE_FEED.servers.ini.rep.head
+_head_entry_ $TMP-EMPTY_LINES.servers.ini.rep.head
+_head_separator_ # setup.ini
+_head_entry_ $TMP-SETUP_INI.rep.head
+_head_entry_ $TMP-LINE_FEED.setup.ini.rep.head
+_head_entry_ $TMP-EMPTY_LINES.setup.ini.rep.head
+_head_separator_ # perform.ini
+_head_entry_ $TMP-LINE_FEED.perform.ini.rep.head
+_head_entry_ $TMP-EMPTY_LINES.perform.ini.rep.head
+_head_separator_ # userlist.db
+_head_entry_ $TMP-USERLIST_DB.rep.head
+_head_entry_ $TMP-LINE_FEED.userlist.db.rep.head
+_head_entry_ $TMP-EMPTY_LINES.userlist.db.rep.head
+_head_separator_ 
+echo "
+=========================================================================
+|                             MODIFICATIONS                             |
+==================================     ==================================
+" >> $ci_report
+_body_entry_ () {
+cat $1 >> $ci_report 2>/dev/null
+}
+_body_separator_ () {
+echo "" >> $ci_report
+}
+_body_entry_ $TMP-INCOMPL_ENTRIES.rep.body
+_body_separator_
+_body_entry_ $TMP-DUP_ENTRIES.info2.db.rep.body
+_body_separator_
+_body_entry_ $TMP-DUP_TOPICS.rep.body
+_body_separator_
+_body_entry_ $TMP-TOPIC_SIZE.rep.body
+_body_separator_
+_body_entry_ $TMP-DATA_SIZE.rep.body
+_body_separator_
+_body_entry_ $TMP-CHECK_RDBS.rep.body
+_body_separator_
+_body_entry_ $TMP-SETUP_INI.rep.body
+_body_separator_
+_body_entry_ $TMP-USERLIST_DB.rep.body
+
+}
+## END OF REPORT ##
+###################
+
+CI_LOG_VARS () {
+if [ ! -s "$ci_vars" ]; then
+touch $ci_vars
+fi
+
+if [ "$1" = "topicsize" ]; then
+unset TOPIC_SIZE
+while [ -z "$TOPIC_SIZE" ]; do
+clear
+echo -e "$PNCI\n - CHANGING TOPIC LENGTH VALUE -\n\n"
+echo -n "Enter the topic length to be set for this utility
+(Default value for topic length is 50 characters): "
+read topic_size
+
+unset testinteger
+testinteger="$(expr "$topic_size" - "0" 2>/dev/null)"
+if [ ! -z "$testinteger" ]; then
+TOPIC_SIZE="$topic_size"
+
+if [ "`grep 'TOPIC_SIZE' $ci_vars`" ]; then
+grep -v 'TOPIC_SIZE' $ci_vars > $TMP
+cat $TMP > $ci_vars
+fi
+echo "TOPIC_SIZE=\"$TOPIC_SIZE\"" >> $ci_vars
+
+echo -e "\nAdded value of "$topic_size" for maximum topic length!\n
+This value MUST be the same as the one given on defines.h
+when Darkbot was configured.
+[ To remove this setting type $0 -default ]\n"
+else
+echo -e "\n#### ERROR ####\nPlease enter an integer [0-9]"
+sleep 2
+fi
+done
+SLEEP 4
+fi
+
+if [ "$1" = "replysize" ]; then
+unset DATA_SIZE
+while [ -z "$DATA_SIZE" ]; do
+clear
+echo -e "$PNCI\n - CHANGING REPLY LENGTH VALUE -\n\n"
+echo -n "Enter the reply length to be set for this utility
+(Default value for reply length is 400 characters): "
+read reply_size
+
+unset testinteger
+testinteger="$(expr "$reply_size" - "0" 2>/dev/null)"
+if [ ! -z "$testinteger" ]; then
+DATA_SIZE="$reply_size"
+
+if [ "`grep 'DATA_SIZE' $ci_vars`" ]; then
+grep -v 'DATA_SIZE' $ci_vars > $TMP
+cat $TMP > $ci_vars
+fi
+echo "DATA_SIZE=\"$DATA_SIZE\"" >> $ci_vars
+
+echo -e "\nAdded value of "$reply_size" for maximum reply length!\n
+This value MUST be the same as the one given on defines.h
+when Darkbot was configured.
+[ To remove this setting type $0 -default ]\n"
+else
+echo -e "\n#### ERROR ####\nPlease enter an integer [0-9]"
+sleep 2
+fi
+done
+SLEEP 4
+fi
+
+if [ "$1" = "nointro" ]; then
+ci_intro_OnOff=off
+if [ "`grep 'ci_intro_OnOff' $ci_vars`" ]; then
+grep -v 'ci_intro_OnOff' "$ci_vars" > $TMP
+cat $TMP > $ci_vars
+fi
+echo "ci_intro_OnOff=\"$ci_intro_OnOff\"" >> $ci_vars
+clear
+echo -e "$PNCI\n - INTRODUCTION TEXT -\n\n
+Introduction is now turned off\n
+[ To remove this setting type $0 -default ]\n"
+SLEEP 4
+fi
+}
+
+CI_INTRO_START () {
+if [ ! `echo "$ci_arg" | grep 'nointro' 2>/dev/null` ]; then # \
+ if [ ! `echo "$ci_intro_OnOff" | grep 'off' 2>/dev/null` ]; then
+  if [ ! `echo "$ci_switches" | grep 'quick' 2>/dev/null` ]; then
+  CI_INTRO
+  fi
+ fi
+fi
+}
+
+# ------------------------ START UTILITY ------------------------ #
+###########
+## START ##
+
+#DB_SCRIPTS_PATH; 
+ENVIRONMENT; TESTDEPEND_GO
+
+ci_files=  ci_switches=
+for ci_arg
+do
+    case "$ci_arg" in
+    -*) ci_switches="$ci_switches $ci_arg" ;;
+    *)  ci_files="$ci_files $ci_arg" ;;
+    esac
+done
+
+# not in use but left here for future consid.
+case "$ci_files" in
+#"") USAGE 1>&2 ;;
+"") $null 1>&2 ;;
+*)  for file in $ci_files
+    do
+    CI_INTRO_START
+    done
+    stat=0
+    ;;
+esac
+
+if [ -z "$ci_files" ] && [ -z "$ci_switches" ]; then
+USAGE
+fi
+
+# ----- SWITCHES -----
+# help __
+if echo "$ci_switches" | grep -qi 'h' 1>/dev/null; then
+USAGE
+fi
+# default __
+if echo "$ci_switches" | grep -qi 'default' 1>/dev/null; then
+rm -f "$ci_vars"
+fi
+# SLEEP function __
+if echo "$ci_switches" | grep -qi 'quick' 1>/dev/null; then
+# bypasses or not 'sleep' (pause) periods -- syntax= SLEEP 3
+SLEEP () { SLEEP=$($null); }
+# if wants quick there is no reason for intro, so... bypass INTRO
+else
+SLEEP () { SLEEP=$(sleep $1); }
+fi
+# bypasses introduction __
+if echo "$ci_switches" | grep -qi 'nointro' 1>/dev/null; then
+CI_LOG_VARS nointro
+#else
+#if [ "$ci_intro_OnOff" != "off" ]; then CI_INTRO; fi
+fi
+# show report __
+if echo "$ci_switches" | grep -qi 'report' 1>/dev/null; then
+ if [ -s $ci_report ]; then
+ cat $ci_report | less -deXF
+ else
+ echo -e "$PNCI\n\nThere is no report file registered\n"
+ fi
+fi
+# topic length __
+if echo "$ci_switches" | grep -qi 'topicsize' 1>/dev/null; then
+CI_LOG_VARS topicsize
+fi
+# reply length __
+if echo "$ci_switches" | grep -qi 'replysize' 1>/dev/null; then
+CI_LOG_VARS replysize
+fi
+
+# ----- FILES -----
+# do all
+if echo "$ci_files" | grep -qi "all" 1>/dev/null; then
+START_INFO2
+START_SERVERS
+START_SETUP
+START_PERFORM
+START_USERLIST
+START_RANDOM
+fi
+
+# info2.db
+if echo "$ci_files" | grep -qi 'info2' 1>/dev/null; then
+START_INFO2
+fi
+# servers.ini
+if echo "$ci_files" | grep -qi 'servers' 1>/dev/null; then
+START_SERVERS
+fi
+# setup.ini
+if echo "$ci_files" | grep -qi 'setup' 1>/dev/null; then
+START_SETUP
+fi
+# perform.ini
+if echo "$ci_files" | grep -qi 'perform' 1>/dev/null; then
+START_PERFORM
+fi
+# userlist.db
+if echo "$ci_files" | grep -qi 'userlist' 1>/dev/null; then
+START_USERLIST
+fi
+# random.ini
+if echo "$ci_files" | grep -qi 'random' 1>/dev/null; then
+START_RANDOM
+fi
+# external databases
+if echo "$ci_files" | grep -qi 'DB_MASTER' 1>/dev/null; then
+external_db="DB_MASTER"
+START_INFO2
+fi
+# remove dbs ###### NOT IMPLEMENTED YET ######
+if echo "$ci_files" | grep -qi 'remove dbs' 1>/dev/null; then
+ # go to dd and use remove function
+./download-databases
+ # do a pre check on info2
+START_INFO2
+REMOVE_PREMADE_DBS # add selected dbs to the end of info2 with a mark; run a
+                   # dup entries function for this only where uniques and dups
+		   # are removed; check at the end entries left after the mark
+		   # meaning they didn't have any match ( just for info); do
+		   # counts at the end | add actions to report
+fi
+
+# ____________________ FINAL ____________________
+if [ -n "$CHANGED" ]; then
+FILES_UPDATE
+INTEGRITY_REPORT
+echo -e "\nA file `pwd`/$ci_report was created
+with the result of all actions taken during this process.
+You can see it by typing $0 -report"
+# rm empty lines
+
+# clean empty
+grep '.' $ci_report > $TMP-ci_report
+mv -f $TMP-ci_report $ci_report
+
+else # no changes made to any file
+clear
+echo -e "$PNCI\n"
+ if [ ! -z "$ci_files" ]; then
+ echo -e "\nNo changes were made to your files!\n"
+ fi
+fi
+
+ if [ ! -z "$ci_files" ]; then
+  if echo "$ci_files" | grep -qi 'DB_MASTER' 1>/dev/null; then
+  ci_files_0="info2.db with downloaded and installed pre-made database"
+  else
+  file_s="$( if [ "`echo "$ci_files" | wc -w | tr -cd '[:alnum:]'`" -gt "1" ] \
+  || `echo "$ci_files" | grep -qi 'random'`; then \
+  echo files; else echo file; fi)"
+  
+  ci_files_0="$(echo "$ci_files" | sed -e s/[[:space:]]/''-''/g)"
+  fi
+ echo -e "\n   Data integrity check process on
+   "[$ci_files_0-]" "$file_s" complete.\n"
+ fi
+
+SLEEP 3
+exit 0

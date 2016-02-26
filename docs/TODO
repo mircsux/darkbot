@@ -1,0 +1,27 @@
+----------------------------------------------------------
+The TO-DO List For Darkbot
+----------------------------------------------------------
+These are features that are in the planning stages, or 
+that haven't been completely worked out, yet.  Also, any
+suggestions that people have made, that are planning to 
+be added, will be listed here.
+----------------------------------------------------------
+
+- Finish the autoconf/automake scripts that I started on.
+
+- Add some kind of escape sequence or special parsing 
+  for topics that start with key words like "WHAT", these
+  words are also recognized internally by the bot for 
+  answering questions.  
+
+- chansrv.c badly needs to be revamped. needs a command
+  structure that allows easy modification and addition,
+  without the massive if-else-elseif structure it has
+  currently.
+
+- Multi-channel randomstuffs. I want to make it possible 
+  for every channel specified in setup.ini as the home 
+  channel, in the case of multiple home channels, has
+  their own randomstuff timers that output randomstuffs
+  according to the action going on, for each specific 
+  channel.

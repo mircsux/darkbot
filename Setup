@@ -1,0 +1,805 @@
+#!/bin/sh
+PNCFG="
+Darkbot Configuration Utility
+<************_~_************>
+"
+PID=0624022000
+lparen='('
+rparen=')'
+# Configures Darkbot
+# to do: correcting user entry errors on the fly
+
+ENVIRONMENT () {
+BASE_WORKDIR="scripts/.scriptutils"
+TMP=$BASE_WORKDIR/._tmp/cfg$$
+mkdir -p $BASE_WORKDIR/._tmp/
+cfg_vars=$BASE_WORKDIR/.cfg_vars
+trap 'rm -fr $BASE_WORKDIR/._tmp* >/dev/null 2>&1' 0
+m_trap="echo -e \n\n -- `basename $0` terminated by `whoami` --\n\n"
+trap '$m_trap 1>&2; exit' 1 2 3 13 15
+# load vars
+# utility vars
+if [ -e "$cfg_vars" ]; then
+. "$cfg_vars"; fi
+# setup.ini
+if [ -s dat/setup.ini ]; then
+cat dat/setup.ini | sed -e s/=/=\"/ -e s/$/\"/ > $TMP-setup.ini
+. $TMP-setup.ini
+fi
+if [ -z "$NICK" ]; then NICK="Darkbot"; fi
+if [ -z "$USERID" ]; then USERID="darkbot"; fi
+if [ -z "$CHAN" ]; then CHAN="#Darkbot"; fi
+if [ -z "$REALNAME" ]; then REALNAME="Get info about me at \
+http://www.darkbot.org "; fi
+if [ -z "$CMDCHAR" ]; then CMDCHAR="!"; fi
+if [ -z "$VHOST" ]; then VHOST="0"; fi
+if [ -z "$AUTOTOPIC" ]; then AUTOTOPIC="0"; fi
+if [ -z "$SEEN" ]; then SEEN="0"; fi
+}
+
+CFG_INTRO () {
+clear
+echo -e "\n$PNCFG
+--------------------------------------------------------------------------"
+if [ ! -s "$cfg_vars" ]; then
+echo -e "
+ Welcome to "$cfg_dbrev" configuration, `whoami`.\n
+ This will lead you through the setup of  your  Darkbot wich requires your
+ input during a few minutes.\n
+ During this process you could change the directives on defines.h file and
+ edit 3 essential files: setup.ini, servers.ini and userlist.db.
+ Additionally, perform.ini  and  deop.ini  could also be edited from here.\n
+ If  for  any reason after configuring your Darkbot you would like  to use
+ this utility again, previously configured items will  be shown as session
+ defaults."
+else
+echo -e "
+ Welcome back to "$cfg_dbrev" configuration, `whoami`.\n"
+if [ "$CFG_DEFINES" = "defined" ] && [ "$cfg_dbrev" != "$CFG_LAST_REV" ]; then
+echo " Since this is a new Darkbot revision you might want to take a look on \
+your
+ defines.h file again."; fi
+echo -e "\n All previously entered information will  be used now as session \
+defaults. 
+ You can bypass the items you don't want to change by hitting  ENTER  key.
+ That data on your \""$NICK"\" will not be modified."
+fi
+echo -e "\n Where shown, [defaults] can be used by hitting ENTER.
+ -------------------------------------------------------------------------- \n
+ [ Hit ENTER to start the configuration, `whoami` ]"
+read PTR
+}
+
+CFG_VARS () {
+# configuration vars
+if [ ! -s "$cfg_vars" ]; then
+touch $cfg_vars
+fi
+ # CFG_EDITOR
+if [ "$1" = "CFG_EDITOR" ]; then
+ if [ "`grep 'CFG_EDITOR' $cfg_vars`" ]; then
+ grep -v 'CFG_EDITOR' "$cfg_vars" > $TMP
+ cat $TMP > $cfg_vars
+ fi
+echo "CFG_EDITOR=\"$CFG_EDITOR\"" >> $cfg_vars
+fi
+ # CFG_DEFINES
+if [ "$1" = "CFG_DEFINES" ]; then
+ if [ "`grep 'CFG_DEFINES' $cfg_vars`" ]; then
+ grep -v 'CFG_DEFINES' "$cfg_vars" > $TMP
+ cat $TMP > $cfg_vars
+fi
+echo "CFG_DEFINES=\"defined\"" >> $cfg_vars
+fi
+ # CFG_LAST_REV
+if [ "$1" = "CFG_LAST_REV" ]; then
+ if [ "`grep 'CFG_LAST_REV' $cfg_vars`" ]; then
+ grep -v 'CFG_LAST_REV' "$cfg_vars" > $TMP
+ cat $TMP > $cfg_vars
+fi
+echo "CFG_LAST_REV=\""$cfg_dbrev"\"" >> $cfg_vars
+fi
+ # CFG_SETUP_INI 
+if [ "$1" = "CFG_SETUP_INI" ]; then
+ if [ "`grep 'CFG_SETUP_INI' $cfg_vars`" ]; then
+ grep -v 'CFG_SETUP_INI' "$cfg_vars" > $TMP
+ cat $TMP > $cfg_vars
+ fi
+echo "CFG_SETUP_INI=\"set\"" >> $cfg_vars
+fi
+}
+
+# PROGRAM SETTINGS #
+CFG_EDITOR () {
+if [ -x "`type -p pico`" ]; then CFG_EDITOR="pico"
+else
+ if [ -x "`type -p emacs`" ]; then CFG_EDITOR="emacs"
+ else
+  if [ -x "`type -p vi`" ]; then CFG_EDITOR="vi"
+  else
+   if [ -x "`type -p vim`" ]; then CFG_EDITOR="vim"
+   fi
+  fi
+ fi
+fi
+clear
+echo -e "\n$PNCFG\n* choosing text editor  *\n
+ In order to adjust Darkbot to your needs some files might need  to
+ to be chamged so it's necessary to know which text editor to  use.\n"
+if [ -n "$CFG_EDITOR" ]; then
+sleep 2
+echo -e " Detected '"$CFG_EDITOR"' installed on your system, but you can \
+use other
+ editor of your choice,   providing it is installed and working."
+else
+# no popular editor detected so have pico as (symbolic) default leaving up to
+# the user to decide what to do
+sleep 1
+echo -e "\n Default one is 'pico' but you can use other editor of  your choice,
+ providing it is present on this system."
+CFG_EDITOR="pico"
+fi
+echo
+while [ -z "$EEDITOR" ]
+do
+ sleep 1
+ echo -n "- Write the name of the text editor you would like to \
+ use ["$CFG_EDITOR"]: "
+ read EEDITOR
+ if [ -z "$EEDITOR" ]; then
+ echo -e "	No editor specified, defaulting to "$CFG_EDITOR". \n"
+ EEDITOR="$CFG_EDITOR"
+ fi
+done
+# put it in var
+CFG_EDITOR="$EEDITOR"
+CFG_VARS CFG_EDITOR
+}
+
+CFG_DEFINES () {
+EEDITOR="$CFG_EDITOR"
+
+echo -e "\n Okay, now you will update the directives in defines.h file,  changing
+ the options you want or your system requires by enabling or disabling
+ it's defines. It is an important file where instructions are given to
+ create the final executable program.\n
+[ Hit ENTER to start editing. ]"
+read tmp
+# put the file in a TMP for modification comparison
+cp -p source/defines.h $TMP.defines.h
+$EEDITOR source/defines.h
+# if 1 is newer than 2
+if [ source/defines.h -nt $TMP.defines.h ]; then
+CFG_VARS CFG_DEFINES
+CFG_VARS CFG_LAST_REV
+# var to instruct new compilation
+CFG_DEFINES_CHANGED=y
+echo " Changes on defines.h saved!"
+else
+echo " No changes made on defines.h!"
+fi
+sleep 3
+}
+
+CFG_CMDCHAR () {
+while [ -z "$CFG_CMDCHAR" ]
+do
+clear
+echo -e "
+$PNCFG
+* editing SETUP.ini *
+"
+echo -n "- Write the command character (CMDCHAR) your Darkbot should respond to 
+  or press ENTER to use pre-defined ["$CMDCHAR"]: "
+read CFG_CMDCHAR
+ if [ -z "$CFG_CMDCHAR" ]; then
+ CFG_CMDCHAR="$CMDCHAR"
+ fi
+ echo -e "
+     Setting command prefix to '"$CFG_CMDCHAR"'...
+     
+    To change it online use command "$CFG_CMDCHAR"SETCHAR
+    "
+done
+sleep 3
+}
+
+CFG_NICK () {
+while [ -z "$CFG_NICK" ]
+do
+clear
+echo "
+$PNCFG
+* editing SETUP.ini *
+"
+echo -n "- Write the nickname (NICK) you would like to use on your Darkbot
+  or press ENTER to use pre-defined ["$NICK"]: "
+read CFG_NICK
+ if [ -z "$CFG_NICK" ]; then
+ CFG_NICK="$NICK"
+ fi
+ echo -e "\n    Setting nick to '"$CFG_NICK"'...\n
+    To set it online use the command "$CFG_CMDCHAR"SETNICK \n"
+done
+sleep 3
+}
+
+CFG_USID () {
+while [ -z "$CFG_USERID" ]
+do
+clear
+echo "
+$PNCFG
+* editing SETUP.ini *
+"
+echo -n "- Write the user id (USERID) you would like to use on "$CFG_NICK"
+  or press ENTER to use pre-defined ["$USERID"]: "
+read CFG_USERID
+ if [ -z "$CFG_USERID" ]; then
+ CFG_USERID="$USERID"
+fi
+ echo -e "\n    Setting user id to "$CFG_USERID"...\n
+    To set it online use the command "$CFG_CMDCHAR"SETUSER \n"
+done
+sleep 3
+}
+
+CFG_CHAN () {
+while [ -z "$CFG_CHAN" ]
+do
+clear
+echo "
+$PNCFG
+* editing SETUP.ini *
+"
+echo -n "- Write the default channel (CHAN) "$CFG_NICK" should use
+  or press ENTER to use pre-defined ["$CHAN"]: "
+read CFG_CHAN
+ if [ -z "$CFG_CHAN" ]; then
+ CFG_CHAN="$CHAN"
+ fi
+ echo -e "\n    Setting default channel to "$CFG_CHAN"...\n
+    To set it online use the command "$CFG_CMDCHAR"SETCHAN \n"
+done
+sleep 3
+}
+
+CFG_RNAME () {
+while [ -z "$CFG_REALNAME" ]
+do
+clear
+echo "
+$PNCFG
+* editing SETUP.ini *
+"
+echo -n "- Write the 'real name' (REALNAME) info for "$CFG_NICK"
+  or press ENTER to use pre-defined one: "
+read CFG_REALNAME
+ if [ -z "$CFG_REALNAME" ]; then
+ CFG_REALNAME="$REALNAME"
+ fi
+ echo -e "\n    Setting 'realname' to '"$CFG_REALNAME"'...\n"
+done
+sleep 3
+}
+
+CFG_VHOST () {
+while [ -z "$CFG_VHOST" ]
+do
+clear
+echo "
+$PNCFG
+* editing SETUP.ini *
+"
+echo -n "- Write the virtual host (VHOST) you want "$CFG_NICK" to use. (0 = no VHOST)
+  Hit ENTER to use pre-defined one ["$VHOST"]:"
+read CFG_VHOST
+ if [ -z "$CFG_VHOST" ]; then
+ CFG_VHOST="$VHOST"
+ fi
+ echo -e "\n    Setting VHOST to "$CFG_VHOST"...\n
+    To change it online use command "$CFG_CMDCHAR"VHOST \n"
+done
+sleep 3
+}
+
+CFG_WRITE_SETUP_INI () {
+clear
+echo -e "\n$PNCFG\n* editing SETUP.ini *\n
+Writing data settings to setup.ini \n Please wait...\n"
+echo "NICK=$CFG_NICK" > dat/setup.ini
+echo "USERID=$CFG_USERID" >> dat/setup.ini
+echo "CHAN=$CFG_CHAN" >> dat/setup.ini
+echo "REALNAME=$CFG_REALNAME" >> dat/setup.ini
+echo "CMDCHAR=$CFG_CMDCHAR" >> dat/setup.ini
+echo "VHOST=$CFG_VHOST" >> dat/setup.ini
+echo "AUTOTOPIC="$AUTOTOPIC"" >> dat/setup.ini
+echo "SEEN="$SEEN"" >> dat/setup.ini
+sleep 3
+CFG_VARS CFG_SETUP_INI
+}
+
+CFG_ADDSERVER () {
+
+_CFG_COUNT_SRV () {
+srv_num_entries="$(cat dat/servers.ini 2>/dev/null | wc -l \
+| tr -cd '[:alnum:]')"
+if [ "$srv_num_entries" = "0" ] || [ -z "$srv_num_entries" ]; then
+srv_entry_s="You have currently NO server entries in your servers.ini file."
+entry_s="entry"
+fi
+ONLY_1_NET="ATTENTION: Make sure you have servers for ONLY 1 network."
+if [ "$srv_num_entries" = "1" ]; then
+srv_entry_s="You have currently "$srv_num_entries" server entry \
+in your servers.ini. file.\n\n
+ "$ONLY_1_NET""
+entry_s="entry"
+fi
+if [ "$srv_num_entries" -gt "1" ]; then
+srv_entry_s="You have currently "$srv_num_entries" servers entries \
+in your servers.ini file.\n\n
+ "$ONLY_1_NET""
+entry_s="entries"
+fi
+}
+_CFG_COUNT_SRV
+
+_CFG_SRV_MENU () {
+
+clear
+echo -e "
+$PNCFG
+* SERVERS.ini *
+
+     "$NICK" needs servers addresses to connect to IRC (as many as you want).
+     "$srv_entry_s"
+     
+     Select one of the following 4 options:
+1) - Write only one server or use the default [irc.darkbot.org] `if [ ! -z \
+"$srv_num_entries" ] && [ "$srv_num_entries" != "0" ]; then \
+echo -e "\n     ${lparen}This option will overwrite \
+the existent "$entry_s" on your servers file${rparen}"; fi`
+2) - Use AddServer utility which gives you many options to manage \
+your servers
+3) - Import a servers.ini file from another location
+4) - or hit ENTER to proceed with no changes."
+echo -n "
+     [ Type 1, 2, 3 or press  ENTER  to proceed ] "
+read CHOICE
+}
+
+_ADD_1_SERVER () {
+while [ -z "$SERVER" ]
+do
+
+clear
+echo -e "\n$PNCFG\n* SERVERS *\n
+- Enter the server your Darkbot should connect to [irc.darkbot.org]: "
+read SERVER
+if [ -z "$SERVER" ]; then
+echo -e "    No server specified. defaulting to irc.darkbot.org
+    You can add servers by running scripts/AddServer
+    or by editing dat/servers.ini\n"
+sleep 2
+SERVER=irc.darkbot.org
+PORT=6667
+fi
+done
+while [ -z "$PORT" ]
+do
+echo -n "- Enter the port to connect to on $SERVER [6667]: "
+read PORT
+if [ -z "$PORT" ]; then
+echo -e "	No port specified, defaulting to 6667\n"
+sleep 2
+PORT=6667
+fi
+done
+
+if [ ! -z "$SERVER" ] || [ ! -z "$PORT" ]; then
+echo -e "\nWriting data settings to servers.ini ....."
+sleep 2
+echo "$SERVER $PORT (Added: `date`)" > dat/servers.ini
+fi
+}
+
+# START SRV GROUP FUNCTION
+while [ -z "$srv_done" ] || [ "$srv_num_entries" = "0" ] || [ -z "$srv_num_entries" ]; do
+_CFG_SRV_MENU
+
+if [ "$CHOICE" = "1" ]; then
+unset srv_done
+_ADD_1_SERVER
+srv_done="y"
+_CFG_COUNT_SRV
+fi
+
+if [ "$CHOICE" = "2" ]; then
+unset srv_done
+ if [ -s "scripts/AddServer" ]; then
+ cd scripts
+ ./AddServer
+ cd ..
+else echo "#### ERROR #### UTILITY NOT INSTALLED"; sleep 2
+ fi
+srv_done="y"
+_CFG_COUNT_SRV
+fi
+
+if [ "$CHOICE" = "3" ]; then
+unset srv_done
+echo -n "
+Write the complete path of servers.ini file to import.
+EX: `pwd`/dat/servers.ini  : "
+read CFG_IMPORT_SRVINI
+if [ ! -z "$CFG_IMPORT_SRVINI" ]; then
+ if [ "`echo "$CFG_IMPORT_SRVINI" | grep 'servers.ini$'`" ]; then
+ cp -f "$CFG_IMPORT_SRVINI" "`pwd`/dat/servers.ini"
+ else
+ echo "#### ERROR #### Invalid servers.ini file!"
+ fi
+sleep 2
+else
+echo "#### INVALID ENTRY ####" 
+sleep 2
+fi
+srv_done="y"
+_CFG_COUNT_SRV
+fi # end of CHOICE 3
+
+if [ "$CHOICE" = "4" ] || [ "$CHOICE" = "" ]; then
+unset srv_done
+if [ "$srv_num_entries" != "0" ] && [ ! -z "$srv_num_entries" ]; then
+echo -n "
+Bypassing servers configuration..."; sleep 1
+fi
+srv_done="y"
+fi
+
+_CFG_COUNT_SRV
+if [ "$srv_num_entries" = "0" ] || [ -z "$srv_num_entries" ]; then
+ echo -n "
+##  WARNING  #########################################################
+##  You need to have at least one server in your servers.ini file!  ##
+######################################################################"
+sleep 3
+fi
+
+done # END OF SRV GROUP FUNCTION
+}
+
+CFG_ADDUSER () {
+while [ "$usr_num_entries" = "0" ] || [ -z "$usr_num_entries" ]; do
+
+_CFG_COUNT_USR () {
+usr_num_entries="$(cat dat/userlist.db 2>/dev/null | wc -l \
+| tr -cd '[:alnum:]')"
+if [ "$usr_num_entries" != "0" ] || [ -z "$usr_num_entries" ]; then
+usr_entry_s="You have currently NO user entries in your userlist.db file."
+entry_s="entry"
+fi
+if [ "$usr_num_entries" = "1" ]; then
+usr_entry_s="You have currently "$usr_num_entries" user entry in \
+your userlist.db file."
+entry_s="entry"
+fi
+if [ "$usr_num_entries" -gt "1" ]; then
+usr_entry_s="You have currently "$usr_num_entries" users entries in \
+your userlist.db file."
+entry_s="entries"
+fi
+}
+_CFG_COUNT_USR
+
+
+clear
+echo -e "
+$PNCFG
+* USERLIST.db *
+
+     "$NICK" needs at least one user as Darkbot administrator.
+     "$usr_entry_s"
+     
+     Select one of the following 4 options:
+1) - Add yourself or someone else as administrator `if [ ! -z \
+"$usr_num_entries" ] && [ "$usr_num_entries" != "0" ]; then \
+echo "\n     ${lparen}This option will overwrite \
+the existent "$entry_s" on your user list file${rparen}"; fi`
+2) - Use AddUser utility with several options to manage "$NICK"'s users
+3) - Import a userlist.db file from another location
+4) - or hit ENTER to proceed with no changes."
+echo -n "
+     [ Type 1, 2, 3 or press  ENTER  to proceed ] "
+read CHOICE
+
+_ADD_1_USER () {
+while [ -z "$ADDUSER" ]
+do
+
+clear
+echo -e "\n$PNCFG\n* USERS *\n
+The format of the user@host is *userid@*.host.isp
+  Examples:
+  *jason@*.superlink.net      <-- dyanmic ip
+  *mtr@darkmind.eclipse.net   <-- static host
+  *darkmind@204.127.145.*     <-- unresolved host\n
+- Enter the *user@host of the administrator you'd like to add: "
+read ADDUSER
+if [ -z "$ADDUSER" ]; then
+echo -e "    No *user@host specified. Changing to AddUser utility.\n"
+ADDUSER=none
+else
+echo -e "    Writing data to userlist.db ..."
+sleep 1
+echo "#* $ADDUSER 3 0 0 I need to use SETINFO" > dat/userlist.db
+echo -e "
+ Added to "$NICK"'s userlist.db file as administrator \
+(level 3) hostmask:
+\"$ADDUSER\". Default password is 0 (zero).
+ To set your new encrypted password online write:
+ /msg "$NICK" pass 0 New_Password (then /msg "$NICK" login New_Password)
+ "
+echo -n "[ Hit ENTER to continue ]"
+read PTR
+fi
+done
+}
+
+if [ "$CHOICE" = "1" ]; then _ADD_1_USER; _CFG_COUNT_USR; fi
+
+if [ "$CHOICE" = "2" ]; then
+ if [ -s "scripts/AddUser" ]; then
+ cd scripts
+ ./AddUser
+ cd ..
+ else echo "#### ERROR #### UTILITY NOT INSTALLED;"; sleep 2
+ fi
+_CFG_COUNT_USR
+fi
+
+if [ "$CHOICE" = "3" ]; then
+echo -n "
+Write the complete path of userlist.db file to import.
+EX: `pwd`/dat/userlist.db  : "
+read CFG_IMPORT_USRLST
+ if [ ! -z "$CFG_IMPORT_USRLST" ]; then
+  if [ "`echo "$CFG_IMPORT_USRLST" | grep 'userlist.db$'`" ]; then
+  cp -f "$CFG_IMPORT_USRLST" "`pwd`/dat/userlist.db"
+  else
+  echo "#### ERROR #### Invalid userlist.db file!"
+  fi
+ sleep 2
+ else
+ echo "#### INVALID ENTRY ####"
+ sleep 2
+ fi
+fi # end of CHOICE 3
+
+if [ "$CHOICE" = "4" ] || [ "$CHOICE" = "" ]; then
+_CFG_COUNT_USR
+if [ "$usr_num_entries" != "0" ] && [ ! -z "$usr_num_entries" ]; then
+echo "
+Bypassing user list configuration..."; sleep 1
+fi
+fi
+if [ "$usr_num_entries" = "0" ] || [ -z "$usr_num_entries" ]; then
+ echo "
+##  WARNING  ###############################################################
+##  You need to add at least one administrator in your userlist.db file!  ##
+############################################################################"
+sleep 3
+fi
+done
+}
+
+
+CFG_MENU () {
+clear
+while [ -z $QUITIT ]
+do
+
+echo -e "\n$PNCFG\n* Darkbot configuration menu *\n
+
+    1) Setup deop.ini and perform.ini files
+    2) Read the README files
+    3) Quit configuration"
+echo -n "
+Select one: "
+read CHOICE
+case $CHOICE in
+        1)
+	clear
+                echo -e "
+		* Darkbot configuration menu * 
+		
+		
+    The .ini's are all in RAW format... so when you
+    want the bot to MSG your channel \"hello!\", you'd
+    have to enter something like:
+            
+    PRIVMSG $CHAN :hello!
+                
+    (Note the :colon after $CHAN, it is required)
+    Check  http://www.darkbot.org for examples
+
+    The first .ini you will need to setup, is the perform.ini.
+    Perform  list is a set of commands you'd like your Darkbot
+    to do when it connects online. This can range from /msging
+    the channel service login commands (so your Darkbot can
+    auto get ops), to /joining other channels....
+    You can later modify this list by editing the perform.ini
+                
+
+ [ Hit ENTER to begin editing your perform.ini ]"
+                read x
+                $CFG_EDITOR dat/perform.ini
+		clear
+                echo -e "\n* Darkbot configuration menu * \n\n
+    Okay, next is the deop.ini, the format is the same as
+    perform.ini.  What deop.ini is, is a list of commands
+    you would like your darkbot to do, when it finds itself
+    deoped in $CHAN. This can range from /msging $CHAN OP ME!
+    to using other bots/channel services to regain ops.
+                
+\n[ Hit ENTER to begin editing your deop.ini ]"
+                read x
+                $CFG_EDITOR dat/deop.ini
+		clear
+                ;;
+ 2)
+clear
+echo -e "\n$PNCFG\n* reading documents  *\n\n
+  First take a look at the README file...
+  (use arrow keys to scroll and press Q when you are done)
+ \n[ Hit ENTER to continue ]"
+ read PTR
+ cat README.txt | less -deXF
+ clear
+echo -e "\n$PNCFG\n* reading documents  *\n\n
+ You should take a look also on README_UTILS file...
+ (use arrow keys to scroll and press Q when you are done)
+ \n[ Hit ENTER to continue ]"
+ read PTR
+ cat docs/README_UTILS | less -deXF	
+ clear
+echo -e "\n$PNCFG\n* reading documents  *\n\n
+ Check out what is new in Darkbot!
+ (use arrow keys to scroll and press Q when you are done)
+ \n[ Hit ENTER to continue ]"
+ read PTR
+ cat docs/WHATSNEW | less -deXF
+ clear
+echo -e "\n$PNCFG\n* reading documents  *\n\n
+ Finally, be aware of who makes this program possible.
+ (use arrow keys to scroll and press Q when you are done)
+ \n[ Hit ENTER to continue ]"
+ read PTR
+ cat docs/contributors.txt | less -deXF
+                ;;
+ 3)
+ clear
+ echo -e "\n$PNCFG * end of configuration *"
+ if [ ! -e "darkbot" ]; then
+ echo -e "\nThere is no darkbot binary present.
+ You'll need to compile the code for Darkbot to run."
+ else
+  # if defines.h were changed
+  if [ -n "$CFG_DEFINES_CHANGED" ]; then
+  echo -e "\nYour changes made on defines.h file will only take
+effect after compiling the code!"
+  fi
+  sleep 1
+ fi
+echo "
+    Darkbot is ready to compile.
+    If you get any  error  during  compilation process  recheck
+    the changes you  made on  defines.h  reading  the  comments
+    next to each directive, starting  at 'SYSTEM REQUIREMENTS'.
+    
+    In case you run into problems, type 'make clean' then 'make
+    debug' following it's instructions and  if  Darkbot crashes
+    type  'backtrace'  to  find  out  exactly  why it happened.
+    
+    If you need further assistance  use  the  support forum  at
+    http://forum.darkbot.org providing detailed information.
+                               
+          Linux/BSD/Unix/Win users type:    make
+          "	
+	        sleep 1
+                QUITIT=yes
+                ;;
+        *)
+		echo
+
+if [ "$CHOICE" != 1-3 ]; then echo "That's not a valid selection. \
+Select 1 or 2. 3 to quit."; fi
+                sleep 1
+		echo
+		clear
+                ;;
+    esac
+done
+}
+
+DB_REV () {
+unset cfg_dbrev
+cfg_dbrev="$(grep -r obkra sou*/*va*c|rev|tac|cut -d \" -f2|head -n1)"
+if [ -z "$cfg_dbrev" ]; then cfg_dbrev=Darkbot; fi
+}
+
+START_CFG () {
+# if there are no vars means didn't run before so do it all
+ENVIRONMENT
+DB_REV 2>/dev/null
+CFG_INTRO
+if [ -z "$CFG_EDITOR" ]; then
+CFG_EDITOR
+else
+clear
+echo "
+$PNCFG
+* Text Editor *
+
+Looks like you have already chosen your default text editor.
+Do you want to choose another one instead of '"$CFG_EDITOR"'?
+"
+echo -n "[ Type Y if you want to select another one or hit ENTER to proceed ] "
+read EditorChoice
+ if [ "$EditorChoice" = "y" ] || [ "$EditorChoice" = "Y" ]; then
+ CFG_EDITOR
+ else
+ echo "
+ Bypassing editor choice..."; sleep 1
+ fi
+fi
+
+if [ -z "$CFG_DEFINES" ]; then
+CFG_DEFINES
+else
+clear
+echo "
+$PNCFG
+* DEFINES.h *
+
+Do you want to edit your directives on defines.h again?
+"
+echo -n " [ Type Y if you want to edit defines.h or hit ENTER to proceed ] "
+read DefinesChoice
+ if [ "$DefinesChoice" = "y" ] || [ "$DefinesChoice" = "Y" ]; then
+  CFG_DEFINES
+ else
+ echo "
+ Bypassing defines.h editing..."; sleep 1
+ fi
+fi
+# SETUP.INI -------------------
+CFG_SETINI () {
+CFG_CMDCHAR; CFG_NICK; CFG_USID; CFG_CHAN; CFG_RNAME; CFG_VHOST
+CFG_WRITE_SETUP_INI
+}
+if [ -z "$CFG_SETUP_INI" ]; then
+CFG_SETINI
+else
+clear
+echo "
+$PNCFG
+* SETUP.ini *
+
+This utility records show you have edited already your setup.ini file.
+Do you want to change some settings?
+"
+echo -n "[ Type Y if you want to edit setup.ini again or hit ENTER to proceed ] "
+read SetupChoice
+ if [ "$SetupChoice" = "y" ] || [ "$SetupChoice" = "Y" ]; then
+ CFG_SETINI
+ else
+ echo "
+ Bypassing setup.ini configuration..."; sleep 1
+ fi
+fi
+CFG_ADDSERVER
+CFG_ADDUSER
+CFG_MENU
+}
+START_CFG
+exit 0

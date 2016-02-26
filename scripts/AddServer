@@ -1,0 +1,477 @@
+#!/bin/sh
+PID=0624233000
+PNAS="
+* Darkbot Servers Utility *
+<***********_~_***********>
+"
+
+# changes: dependencies - option of using lynx or wget (041402)
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $0 ...\n\n\n"; sleep 1; exit 0
+}
+
+DB_SCRIPTS_PATH () {
+cd scripts 2>/dev/null
+dirutil="scripts"
+filutil="`basename $0`"
+# check if dir is correct
+if ! echo `pwd` | grep -q "\/"$dirutil""; then
+# file is not being launched from $dirutil
+ if [ -d "$dirutil" ]; then # dir is there
+# if file is not in the correct dir
+  if [ ! "`ls "$dirutil" | grep "$filutil"`" ]; then
+  # file is not in the correct dir so move it
+clear
+echo -e "$PNAS\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory.\n"
+echo "Moving it now...."
+sleep 2
+cat > db_wrong_path << EOF[WP]
+mv -f $0 "$dirutil"/
+cd "$dirutil"/
+echo -e "\n| Your "$filutil" is now located in your "$dirutil" directory |
+            | Launch it from there when necessary |\n\n"
+sleep 4
+$0
+rm -f ../db_wrong_path
+exit 0
+EOF[WP]
+. db_wrong_path
+  else # file is in dir so just cd
+cd "$dirutil"/
+  fi
+ else # dir is not there so don't bother - tell user to move it
+clear
+echo -e "$PNAS\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory and launched from there or Darkbot's root.
+Please move it and launch it again."
+sleep 3
+ABORT
+ fi
+fi
+}
+#DB_SCRIPTS_PATH
+
+BASE_WORKDIR=.scriptutils
+TMP=$BASE_WORKDIR/._tmp/as$$
+mkdir -p $BASE_WORKDIR/._tmp/
+trap 'rm -fr $BASE_WORKDIR/._tmp* >/dev/null 2>&1' 0
+m_trap="echo -e \n\n -- `basename $0` terminated by `whoami` --\n\n"
+trap '$m_trap 1>&2; exit' 1 2 3 13 15
+
+FILESERV="../dat/servers.ini"
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $PNAS...\n\n\n"; sleep 1; exit 0
+}
+
+SERVERS_HELP () {
+echo -e "$PNAS
+Basically  what  this script does is managing your servers.ini file  by  adding
+removing and changing servers and ports.
+You have the option of manipulating only your local servers file or downloading
+an updated server list from the  International Federation of IRC  and work with
+those servers.
+On all lists the servers are preceded by a number (which is not in fact part of
+the files) to help you better choose or manage each entry.
+On  the  remote servers list the ports displayed on the right are only for your
+reference and corresponds to all available ports.  It's recommendable to select
+option  2  on the menu to load the external servers before changing local ports
+so you'll have updated information to deal with.
+If  you decide to move all remote list to your local file,  port  6667  will be
+used for all servers.  You  can  later  change that port for each server on the
+main menu, option 8.
+On  all  lists PgUp/Down or arrow keys scrolls the text; Q quits from the list.
+CTRL+C aborts at all times.
+To launch the utility write $0. For a quick server entry write: 
+$0 server port (ex:  $0 irc.server.here 6667 )\n
+Comments, suggestions?
+Support: http://forum.darkbot.org\n"
+if [ -n "$insider" ]; then echo "[ Hit ENTER to continue ]"; read PTR; fi
+}
+
+# test environment
+TESTDEPEND () {
+NonFatalError () {
+echo "NON FATAL ERROR at $0 (`date`): $FiLe not detected on this system. \
+Going to simple operation mode, which means only simple SERVER addition will \
+be performed..." >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PNAS\nNON FATAL ERROR: $FiLe not detected on this system.
+Going to simple operation mode, which means only simple SERVER addition will
+be performed...\n"
+}
+if ! (type "$1" 1>/dev/null 2>&1); then
+FiLe="$1"
+NonFatalError $1
+sleep 1; unset $FiLe
+fi
+}
+TESTDEPEND "grep"; TESTDEPEND "sed"; TESTDEPEND "cut"; TESTDEPEND "cat"
+
+# test dependencies which can have optional programs and set vars for those.
+TESTDEPEND_SUBST () {
+# test lynx/wget
+if (type "lynx" 1>/dev/null 2>&1); then
+dld_prg="lynx"
+else
+ if (type "wget" 1>/dev/null 2>&1); then
+ dld_prg="wget"
+ fi
+fi
+if [ -z "$dld_prg" ]; then
+echo -e "FATAL ERROR at $0 (`date`): lynx and wget not detected \
+on this system. One it's necessary for this utility to work \
+properly" >> $BASE_WORKDIR/error_messages
+echo -e "$PNAS\nFATAL ERROR at $0 (`date`)\n\n
+Either lynx or wget are essential for $0 to work properly.
+None of those programs were found on this system"
+ABORT
+fi
+}
+TESTDEPEND_SUBST
+
+# dat/servers.ini
+DISPLAY_LOCAL () {
+if [ ! -e "$FILESERV" ] || [ ! -s "$FILESERV" ]; then
+# echo -e "$PNAS\nThere are no servers present."; sleep 2
+echo "    #### There are no servers present - servers.ini is empty ####"; sleep 2
+LASTACTION="Unaccomplished action - no servers present on ../dat/servers.ini."
+else
+clear
+echo -e "$PNAS* Local Server List ** "$FILESERV" ** \n
+[ PgUp/Down or arrow keys scrolls; Q quits from the list ]\n
+`cat -b "$FILESERV"`\n
+" | less -deXF
+echo "  Press ENTER to continue"; read PTR
+
+LASTACTION="Displayed Darkbot servers list."
+fi 
+}
+
+QUICK_ADD () {
+clear
+echo ""$ADDserv" "$ADDport"" >> "$FILESERV"
+echo -e "$PNAS\nAdded to your "$FILESERV" exactly this entry:
+"$ADDserv" "$ADDport"\n\n"
+}
+
+ADDSERVER () {
+unset SERV; unset PORT
+while [ -z "$SERV" ]
+do
+ clear
+ echo -n "$PNAS
+ Enter a server name: "
+ read SERV
+ if [ -z "$SERV" ]; then
+ echo -e "You MUST specify a server!\n"
+ sleep 1
+ fi
+done
+while [ -z "$PORT" ]
+do
+ echo -n "
+ What port to connect to on $SERV? [6667] "
+ read PORT
+ if [ -z "$PORT" ]; then
+ echo -e "\n    Defaulting port to 6667...\n"
+ PORT=6667
+ sleep 1
+ fi
+done
+echo "$SERV $PORT" >> $FILESERV
+LASTACTION="Added: SERVER: "$SERV"   PORT: "$PORT""
+if [ -e "$TMP.TESTDEPEND" ]; then
+clear
+echo -e "$PNAS\nAdded to your "$FILESERV"\n Server: "$SERV" - Port: "$PORT"\n\n"
+fi
+}
+
+DELSERVER () {
+if [ -s "$FILESERV" ]; then
+unset DEL_SERV
+echo -n "Please enter the number corresponding to the server to be removed: "
+read DEL_SERV
+svr_num_lines="$(cat "$FILESERV" | wc -l | tr -cd '[:alnum:]')"
+if [ ! -z "$DEL_SERV" ]; then
+# if [ "$DEL_SERV" -le "$srv_num_lines" ]; then
+ REMOVED=$(sed -n $DEL_SERV"p" $FILESERV)
+ if [ ! -z "$REMOVED" ]; then
+ sed $DEL_SERV"d" $FILESERV > $TMP.FILESERV
+ LASTACTION="Removed: $REMOVED."
+ cat $TMP.FILESERV > $FILESERV
+ LASTACTION="Removed from your Darkbot IRC servers list: $REMOVED."
+ else
+ LASTACTION="Unaccomplished server entry removal - invalid input."
+ fi
+else
+LASTACTION="Unaccomplished server removal - no servers present on $FILESERV."
+fi
+fi
+}
+
+CHANGEPORT () {
+if [ -s "$FILESERV" ]; then
+unset READ_SERV_NUM; unset NEW_PORT
+cat -b $FILESERV > $TMP.FILESERV
+while [ -z "$READ_SERV_NUM" ]; do
+echo -n "Enter the number corresponding to the server to change the port: "
+read READ_SERV_NUM
+SERV_TMP=$(sed -n $READ_SERV_NUM"p" $FILESERV | cut -d' ' -f1)
+OLD_PORT=$(sed -n $READ_SERV_NUM"p" $FILESERV | cut -d' ' -f2)
+done
+
+## Possible port choices/ confront with remote server then put var on echo
+if [ "$RemoteStatus" != "off" ]; then
+PossPortChoices=$(sed -n /$SERV_TMP/p $TMP.NETW_NAME | cut -d: -f2)
+fi
+clear
+while [ -z "$NEW_PORT" ]; do
+echo -n "$PNAS
+Current port on $SERV_TMP: $OLD_PORT.
+`if [ ! -z $PossPortChoices ]; then echo Available ports: $PossPortChoices; fi`
+Enter the new port or press ENTER for default [6667]: "
+read NEW_PORT
+if [ -z $NEW_PORT ]; then NEW_PORT=6667; fi
+sed -e '/'$SERV_TMP'/s/'$OLD_PORT'/'$NEW_PORT'/' $FILESERV > $TMP.2.FILESERV
+cat $TMP.2.FILESERV > $FILESERV
+done
+LASTACTION="Changed port $OLD_PORT to $NEW_PORT on $SERV_TMP"
+else
+LASTACTION="Unaccomplished port change - no servers present on $FILESERV."
+fi
+}
+
+# remote servers
+GET_REMOTE () {
+if [ ! -s $TMP.rem.servers ]; then
+
+DLD_PRG_COMMLINE () {
+if [ "$dld_prg" = "lynx" ]; then
+lynx -source -nostatus http://ifirc.com/servers.ini 2>/dev/null > $TMP.rem.servers
+else
+wget -qO $TMP.rem.servers http://ifirc.com/servers.ini
+fi
+}
+
+trymax="3"; trycount="0"
+while [ "$trycount" != "$trymax" ] && [ ! -s $TMP.rem.servers ]; do
+trycount=`expr $trycount + 1`
+echo -e "$PNAS\n An updated server list is being downloaded from the
+ International Federation of IRC - http://ifirc.com.\n
+Please wait...\n"
+
+DLD_PRG_COMMLINE
+#cp servers.ini $TMP.rem.servers # debug only
+# cp $TMP.rem.servers servers.ini # debug only
+done
+unset testRemote
+testRemote=$(grep undernet $TMP.rem.servers)
+if [ -z "$testRemote" ]; then
+ echo -e "$PNAS\n I can't obtain the remote servers list at this time"
+ LASTACTION="Remote (external) server list unreachable."
+ RemoteStatus="off"
+ fi
+fi
+}
+
+SELECT_REMOTE () {
+if [ ! -z "$testRemote" ]; then
+while [ ! -s "$TMP.NETW_NAME" ]; do
+clear
+echo -n "$PNAS
+* External Server List *
+
+Write the name of the IRC network (ex: Undernet): "
+read NETW_NAME
+if [ ! -z "$NETW_NAME" ]; then
+grep -i "$NETW_NAME": $TMP.rem.servers | cut -d: -f3-4 | sed s/GROUP// > $TMP.NETW_NAME
+grep -i "$NETW_NAME": $TMP.rem.servers | cut -d: -f3 | sed 's/$/ 6667/' > $TMP.EXTERNAL_ALL6667 
+grep -i "$NETW_NAME": $TMP.rem.servers | cut -d: -f3 | sed 's/$//' > $TMP.EXTERNAL_NOPORTS
+
+ if [ ! -s $TMP.NETW_NAME ]; then
+ echo -e "\nERROR: I don't have network '$NETW_NAME' on my list.\n"
+ sleep 1
+ fi
+fi
+done
+fi # testRemote != null
+}
+
+DISPLAY_REMOTE () {
+if [ ! -z "$testRemote" ]; then
+if [ ! -s $TMP.NETW_NAME ]; then
+SELECT_REMOTE
+clear
+fi
+echo -e "$PNAS* External Server List ** $NETW_NAME ** \n
+[ PgUp/Down or arrow keys scrolls; Q quits from the list ]\n
+`cat -b $TMP.NETW_NAME`\n
+" | less -deXF
+echo "  Press ENTER to continue"; read PTR
+LASTACTION="Displayed remote servers list."
+# cat -b $TMP.NETW_NAME > NETW_NAME # debug only
+# cat $TMP.NETW_NAME > NETW_NAME # debug only
+fi # testRemote != null
+}
+
+ADDSERVER_REMOTE () {
+unset READ_REM_SERV_NUM
+if [ ! -s $TMP.NETW_NAME ]; then SELECT_REMOTE; fi
+if [ ! -z "$testRemote" ]; then
+ADD_1_REMOTE () {
+cat -b $TMP.NETW_NAME | less -deXF
+while [ -z "$READ_REM_SERV_NUM" ]; do
+echo -n "
+Enter the number corresponding to the server to be added: "
+read READ_REM_SERV_NUM
+REM_SERV_TMP=$(sed -n $READ_REM_SERV_NUM"p" $TMP.EXTERNAL_NOPORTS)
+
+REM_SERV_PORTS=$(sed -n $READ_REM_SERV_NUM"p" $TMP.NETW_NAME | cut -d: -f2)
+done
+clear
+echo -n "$PNAS
+Available ports for "$REM_SERV_TMP": "$REM_SERV_PORTS"
+
+Write the port number for "$REM_SERV_TMP"
+or press ENTER for default [6667]: "
+read READ_REM_SERV_PORT
+if [ -z $READ_REM_SERV_PORT ]; then READ_REM_SERV_PORT=6667; fi
+echo "$REM_SERV_TMP" "$READ_REM_SERV_PORT" >> $FILESERV
+LASTACTION="Added SERVER "$REM_SERV_TMP", PORT "$READ_REM_SERV_PORT"."
+}
+
+APPEND_ALL_REMOTE () {
+cat $TMP.EXTERNAL_ALL6667 >> "$FILESERV"
+LASTACTION="Appended all servers from "$NETW_NAME" to your Darkbot IRC servers!"
+}
+
+OVERWRITE_ALL_REMOTE () {
+cat $TMP.EXTERNAL_ALL6667 > "$FILESERV"
+LASTACTION="Overwrited your Darkbot servers file with all servers from "$NETW_NAME"!"
+}
+fi # testRemote != null
+}
+
+SERVERS_MENU () {
+while [ "$CHOICE" != "0" ]; do
+unset servini_status_; unset servini_status
+if [ ! -e "$FILESERV" ] || [ ! -s "$FILESERV" ]; then
+servini_status_="*"
+servini_status=" Not available - empty file"
+fi
+if [ "$RemoteStatus" = "off" ]; then
+RemoteStatus1="*" # for menu
+fi
+
+clear
+if [ -f "$FILESERV" ]; then TOTAL_LOCAL_SERV="$(cat "$FILESERV" | wc -l | tr -cd '[:alnum:]')"; fi
+if [ "$TOTAL_LOCAL_SERV" = "1" ]; then server_s="server" ; else server_s="servers" ; fi
+if [ "$TOTAL_LOCAL_SERV" = "" ]; then TOTAL_LOCAL_SERV="0" ;fi
+echo -e "$PNAS
+`if [ ! -z "$LASTACTION" ]; then
+echo -e "  | Last action/status:\n  |" $servini_status_""$RemoteStatus1" "$LASTACTION" "; else echo "MAIN MENU"; fi`
+  | Number of servers currently in servers.ini file: "$TOTAL_LOCAL_SERV"
+
+[1]  Display my `if [ "$TOTAL_LOCAL_SERV" != "0" ]; then echo "$TOTAL_LOCAL_SERV"; fi` "$server_s". "$servini_status_"
+[2]  Display the external server list. "$RemoteStatus1"
+[3]  Add a server to my local server file. (manually)
+[4]  Add a server from the external list. (pick one) "$RemoteStatus1"
+[5]  Add all servers from the external server list. (append to local) "$RemoteStatus1"
+[6]  Add all servers from the external server list. (overwrite local) "$RemoteStatus1"
+[7]  Change the port on a server. "$servini_status_"
+[8]  Remove a server from my servers file. "$servini_status_"
+[9]  Remove all servers from my servers.ini file. "$servini_status_"
+(C) Check my servers.ini file for errors (fast mode). "$servini_status_"
+(H) HELP
+(X) EXIT Darkbot Servers Utility.
+    "$servini_status_" $servini_status \n"
+echo -n "Enter your choice: "
+read CHOICE
+case $CHOICE in
+1)
+#clear; DISPLAY_LOCAL;;
+DISPLAY_LOCAL;;
+2)
+clear; GET_REMOTE; DISPLAY_REMOTE;;
+3)
+clear; ADDSERVER;;
+4)
+clear; GET_REMOTE; ADDSERVER_REMOTE; ADD_1_REMOTE;;
+5)
+clear; GET_REMOTE; ADDSERVER_REMOTE; APPEND_ALL_REMOTE;;
+6)
+clear; GET_REMOTE; ADDSERVER_REMOTE; OVERWRITE_ALL_REMOTE;;
+7)
+#clear; DISPLAY_LOCAL; CHANGEPORT;;
+DISPLAY_LOCAL; CHANGEPORT;;
+8)
+#clear; DISPLAY_LOCAL; DELSERVER;;
+DISPLAY_LOCAL; DELSERVER;;
+9)
+if [ "$servini_status_" != "*" ]; then
+cat servers.ini > "$FILESERV" 2>/dev/null
+echo "REMOVING all servers from servers.ini...";
+LASTACTION="Removed all servers from servers.ini file."
+else
+echo "    #### No servers to remove. File servers.ini is empty ####"
+LASTACTION="Unaccomplished servers removal - empty file."
+fi
+sleep 2;;
+C)
+if [ "$servini_status_" != "*" ]; then
+ if [ ! -s check-integrity ]; then
+ LASTACTION="Unaccomplished file check - utility not installed."
+ else
+ ./check-integrity servers -quick
+ LASTACTION="Checked servers.ini for errors."
+ fi
+else
+LASTACTION="Unaccomplished file check - empty file."
+fi;;
+c)
+if [ "$servini_status_" != "*" ]; then
+ if [ ! -s check-integrity ]; then
+ LASTACTION="Unaccomplished file check - utility not installed."
+ else
+ ./check-integrity servers -quick
+ LASTACTION="Checked servers.ini for errors."
+ fi
+else
+LASTACTION="Unaccomplished file check - empty file."
+fi;;
+
+h)
+clear; insider=y; SERVERS_HELP;;
+H)
+clear; insider=y; SERVERS_HELP;;
+x)
+exit 0;;
+X)
+exit 0;;
+*)
+if [ -z $CHOICE ]; then
+echo -e "\nERROR: Playing with the ENTER key..?"; sleep 2; clear
+else
+echo -e "\nERROR: '$CHOICE' is not a valid choice"; sleep 2; clear
+fi
+esac
+done
+}
+
+# start engines
+if [ "$1" = "-h" ] || [ "$1" = "-H" ] || [ "$1" = "--h" ]; then
+clear; SERVERS_HELP
+
+ elif [ ! -z "$1" ] && [ ! -z "$2" ]; then
+ ADDserv="$1"; ADDport="$2"; QUICK_ADD 
+
+ elif [ ! -e "$TMP.TESTDEPEND" ]; then SERVERS_MENU
+ else
+ ADDSERVER
+
+fi   

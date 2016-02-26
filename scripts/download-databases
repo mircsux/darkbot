@@ -1,0 +1,384 @@
+#!/bin/sh
+PNDD="Darkbot's pre-made Databases  Utility\n<****************_~_****************>\n"
+PID=0624233000
+
+# todo -- download tars as of live-update instead of *.db
+# removal of pre-made databases (in conjunction w/check-integrity)
+
+ABORT () {
+echo -e "\nThis utility will stop now!\n\nLeav\
+ing $PN...\n\n\n"; sleep 1; exit 0
+}
+
+DB_SCRIPTS_PATH () {
+dirutil="scripts"
+filutil="`basename $0`"
+# check if dir is correct
+if ! echo `pwd` | grep -q "\/"$dirutil""; then
+# file is not being launched from $dirutil
+ if [ -d "$dirutil" ]; then # dir is there
+ # if file is not in the correct dir
+  if [ ! "`ls "$dirutil" | grep "$filutil"`" ]; then
+  # file is not in the correct dir so move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory.\n"
+echo "Moving it now...."
+sleep 2
+cat > db_wrong_path << EOF[WP]
+mv -f $0 "$dirutil"/
+cd "$dirutil"/
+echo -e "\n| Your "$filutil" is now located in your "$dirutil" directory |
+            | Launch it from there when necessary |\n\n"
+sleep 4
+$0
+rm -f ../db_wrong_path
+exit 0
+EOF[WP]
+. db_wrong_path
+  else # file is in dir so just cd
+cd "$dirutil"/
+  fi
+ else # dir is not there so don't bother - tell user to move it
+clear
+echo -e "$PNCI\n\n##### WARNING #####\n\n"$filutil" must be located \
+in "$dirutil" directory and launched from there or Darkbot's root.
+Please move it and launch it again."
+sleep 3
+ABORT
+ fi
+fi
+}
+#DB_SCRIPTS_PATH
+
+ENVIRONMENT () {
+BASE_WORKDIR=.scriptutils
+COMMON_TMP=$BASE_WORKDIR/tmp
+mkdir -p $BASE_WORKDIR/tmp
+DDDIR=$BASE_WORKDIR/dldatabases
+TMP=$BASE_WORKDIR/._tmp/ddat$$
+mkdir -p $BASE_WORKDIR/._tmp/
+DD_LOGFILE=$BASE_WORKDIR/.dbs_status
+cp -f $DD_LOGFILE $TMP-DBS_STATUS 2>/dev/null
+trap 'rm -f $TMP* >/dev/null; rm -fr $BASE_WORKDIR/._* >/dev/null 2>&1' 0
+m_trap="echo -e \n\n -- `basename $0` terminated by `whoami` --\n\n"
+trap '$m_trap 1>&2; exit' 1 2 3 13 15
+}
+
+# test dependencies
+TESTDEPEND () {
+NonFatalError () {
+echo "FATAL ERROR at $0 (`date`): $FiLe not detected \
+on this system." >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PNDD\nFATAL ERROR at $0 (`date`)\n\n
+$FiLe not detected on this system.
+It is essential for $0 to work properly."
+ABORT
+}
+if ! (type "$1" 1>/dev/null 2>&1); then
+FiLe="$1"
+NonFatalError $1
+sleep 1; unset $FiLe
+fi
+}
+TESTDEPEND_GO () {
+TESTDEPEND "grep"; TESTDEPEND "sed"; TESTDEPEND "cut"
+TESTDEPEND "wc"; TESTDEPEND "cat"; TESTDEPEND "expr"
+}
+
+# test dependencies which can have optional programs and set vars for those.
+TESTDEPEND_SUBST () {
+# test lynx/wget
+if (type "lynx" 1>/dev/null 2>&1); then
+dld_prg="lynx"
+ else
+ if (type "wget" 1>/dev/null 2>&1); then
+ dld_prg="wget"
+ fi
+fi
+if [ -z "$dld_prg" ]; then
+echo -e "FATAL ERROR at $0 (`date`): lynx and wget not detected \
+on this system. One it's necessary for this utility to work \
+properly" >> $BASE_WORKDIR/error_messages
+clear
+echo -e "$PN\nFATAL ERROR at $0 (`date`)\n\n
+Either lynx or wget are essential for $0 to work properly.
+None of those programs were found on this system"
+ABORT
+fi
+}
+    
+# download command line to parse redirection url
+GET_SERVER_URLS () {
+if [ "$dld_prg" = "lynx" ]; then
+lynx -source http://www.darkbot.org 2>/dev/null > $TMP
+else
+wget -qO $TMP http://www.darkbot.org
+fi
+# parse redir. main url. ex: http://pincel.net/darkbot/
+REDIRECT_URL_MAIN=$(grep "FRAME SRC" $TMP | cut -d\" -f2)
+# redirection url for dbs. ex: http://pincel.net/darkbot/arquive/databases/
+REDIRECT_URL_DBS=""$REDIRECT_URL_MAIN"archive/databases"
+if [ ! -s $TMP ]; then
+clear
+echo -e "$PNDD\nWARNING\n
+Unable to establish connection with the server."
+ABORT; fi
+}
+
+# get dbs info text
+# download command line to parse redirection url
+GET_DBS_INFO () {
+if [ "$dld_prg" = "lynx" ]; then
+lynx -dump -nolist "$REDIRECT_URL_MAIN"databases.html > $TMP-db.txt
+else
+wget -qO $TMP-db.txt "$REDIRECT_URL_MAIN"databases.html
+fi
+if ! grep -qwi "Pre-made" $TMP-db.txt 2>/dev/null; then
+clear
+echo -e "$PNDD\nWARNING\n
+Unable to obtain from the server essential information."
+ABORT; fi
+}
+
+# get vars -- Database=acro2
+GET_DBS_VARS () {
+if [ "$dld_prg" = "lynx" ]; then
+cat $TMP-db.txt | sed -ne /Elaborated/s/[[:blank:]]*/Database=/p \
+| cut -d ' ' -f1 | cut -d. -f1 > $TMP.db.vars
+else
+sed -ne /zip[\<a*]/s/[[:blank:]]*/Database=/p $TMP-db.txt \
+| cut -d. -f1 > $TMP.db.vars
+fi
+}
+
+# download status; evaluate user activity; check if any new database
+# register activity in local file
+DBS_STATUS () {
+rm -f $TMP-DISPLAY # refresh list
+numLines="$(cat $TMP.db.vars | wc -l | sed s/[[:blank:]]*//)"
+count="0"
+while [ "$count" != "$numLines" ]; do
+count=`expr $count + 1`
+sed -n "$count"p $TMP.db.vars > $TMP.db.var
+unset Database
+. $TMP.db.var
+# get complete local line if exists and put it on a file list
+grep -w "$Database" $TMP-DBS_STATUS 2>/dev/null > $TMP.db.loc.var
+# check the status and put the result on an organized list to display
+if [ -s $TMP.db.loc.var ]; then
+ if grep -w "{D}" $TMP.db.loc.var 1>/dev/null; then
+ echo "[$count] {D}	$Database	-`cat $TMP.db.loc.var | cut -d- -f2`" >> $TMP-DISPLAY; fi
+ if grep "{I}" $TMP.db.loc.var 1>/dev/null; then
+ echo "[$count] {I}	$Database" >> $TMP-DISPLAY; fi
+ if grep "{x}" $TMP.db.loc.var 1>/dev/null; then
+ echo "[$count] {x}	$Database       -`cat $TMP.db.loc.var | cut -d- -f2`" >> $TMP-DISPLAY; fi
+else
+echo "[$count] {A}	$Database" >> $TMP-DISPLAY
+fi
+done
+# prep file to be used on live-update
+cat $TMP-DISPLAY | grep -w "{A}" | cut -d\} -f2 > $COMMON_TMP/.dbs_available
+} # end of DBS_STATUS 
+
+DBS_STATUS_FINAL () {
+# move all new dbs status to local status file
+rm -f $DD_LOGFILE
+# extract all but {A} without list number
+cut -d' ' -f2- $TMP-DISPLAY | grep -v "{A}" > $TMP-DISPLAY1
+# extract {I} and add to local
+grep "{I}" $TMP-DISPLAY1 >> $DD_LOGFILE
+# extract old {D} and add to local
+grep "{D}" $TMP-DISPLAY1 >> $DD_LOGFILE
+# move newly download entries to local
+cat $TMP-DISPLAY2 2>/dev/null >> $DD_LOGFILE
+}
+
+# MENU and DOWNLOAD
+DBS_MENU_DLD () {
+while [ -z $LEAVENOW ]; do
+DBS_STATUS
+clear
+# menu
+# start by listing dbs by number and corresponding db, ex: 1  acro2.db 
+echo -e "$PNDD\nAvailable Databases:
+( {A}=Available {D}=Downloaded {I}=Ignored {x}=Marked for Installation )
+`#cut -d= -f2 $TMP.db.vars | cat -b`
+`cat $TMP-DISPLAY`
+------------------------------------
+  [I]  Ignore databases
+`if [ "$dld_prg" = "lynx" ]; then echo -e "  [R]  Read Databases information"; fi`
+  [Q]  Quit "$Quit_txt"" | less -deXF
+echo -n "
+Please make your choice. To select databases write their corresponding
+numbers, separated by spaces or commas, ie, 1,2,5 or 1 2 5: "
+  read CHOICE
+# outputs 1 2 3 etc corresponding to database number or I/X
+
+# dbs to be ignored
+_DBS_IGNORE () {
+clear
+echo -e "$PNDD\nIgnore Databases\n
+This feature is only useful when $0 is being used
+during live-update process so the utility will not prompt for available
+pre-made databases on non wanted files.\n"
+echo -n "Enter the number corresponding to the database to be ignored
+or write 'ALL' to mark all {A}vailable databases as {I}gnored: "
+read CHOICE_I
+
+# mark all ignored
+if echo "$CHOICE_I" | grep -qwi all 1>/dev/null; then
+sed s/{A}/{I}/g $TMP-DISPLAY > $TMP
+cat $TMP | cut -d' ' -f2- > $TMP-DBS_STATUS
+fi
+
+# if choice is a number
+sed -n "$CHOICE_I"p $TMP.db.vars 2>/dev/null > $TMP.db.vari
+. $TMP.db.vari
+
+#check if it is marked other way than {A}. (for {D} or {x})
+if [ "$CHOICE_I" != "all" ] || [ "$CHOICE_I" != "uuu" ] ; then
+grep -wi "$Database" $TMP-DISPLAY > $TMP
+if grep -qwi "{D}" $TMP 2>/dev/null; then
+echo -e "\nDatabase $Database is marked as {D}ownloaded!\n"; sleep 2
+elif grep -qwi "{x}" $TMP; then
+echo -e "\nDatabase $Database is {x} marked for installation!\n"; sleep 2
+else # is marked as {A} so {I}gnore
+echo "{I} $Database" >> $TMP-DBS_STATUS
+fi
+fi # if not all or uuu
+} # end of _DBS_IGNORE (Ignore options)
+if echo $CHOICE | grep -qwi i 1>/dev/null; then _DBS_IGNORE; fi
+
+# [r]ead info about the files
+if echo $CHOICE | grep -qwi r 1>/dev/null; then
+clear
+echo -e "$PNDD\nAvailable database files information\n
+`grep Elaborated $TMP-db.txt | less -deX`
+\nPress ENTER to continue"
+read PTR
+fi
+
+# [q]uits databases utility and start integrity check in case there is any {x}
+if echo $CHOICE | grep -qwi q 1>/dev/null; then
+ # check if $TMP-DISPLAY2 exists (created if there is any {x}download) 
+ if [ ! -s $TMP-DISPLAY2 ]; then # no files to download so log other changes
+ DBS_STATUS_FINAL
+ fi
+LEAVENOW=end
+fi
+
+DB_SELECT_DLD () {
+# check how many lines on the remote list
+numLines="$(cat $TMP.db.vars | wc -l | sed s/[[:blank:]]*//)"
+
+# set max = total number/lines
+max="$numLines"; count="0"
+
+while [ $count != $max ]; do
+count=`expr $count + 1`
+# if CHOICE is between the range of num lines/items to choose
+if (echo $CHOICE | grep -qw "$count" 1>/dev/null); then
+# extract corresponding line from vars file
+sed -n "$count"p $TMP.db.vars > $TMP.db.var
+# then extracs var itself, ie Database=whatever
+. $TMP.db.var
+
+DLD_PRG_COMMLINE4 () {
+clear; echo -e "\n$PNDD\n
+\n* ========== > Downloading $Database pre-made database > >  >    >\n\nPlease wait..."
+if [ "$dld_prg" = "lynx" ]; then
+lynx -source "$REDIRECT_URL_DBS/$Database".db >> $TMP-DB_MASTER
+else
+wget -qO $TMP-DB_MASTER "$REDIRECT_URL_DBS"/"$Database".db
+fi
+# add database to log file
+echo "{x} $Database	- (marked for installation)" >> $TMP-DBS_STATUS
+# prepare log entry in case the process finishes
+echo "{D} $Database	- `date +%D`" >> $TMP-DISPLAY2
+# just a var for QUIT text
+Quit_txt="and proceed with check integrity and final installation."
+}
+
+# check if it was ignored
+if grep -w "$Database" $TMP-DBS_STATUS 2>/dev/null | grep -qw "{I}"; then
+clear
+echo -e "$PNDD\n
+Removing [I]gnored status from "$Database"..."
+sleep 2
+grep -wv $Database $TMP-DBS_STATUS > $TMP
+cat $TMP > $TMP-DBS_STATUS
+fi
+# check if it was downloaded already
+if grep -w "$Database" $TMP-DBS_STATUS 2>/dev/null | grep -qw "{D}"; then
+clear
+echo -e "$PNDD\n
+Looks like you have already downloaded database
+`grep -w "$Database" $TMP-DBS_STATUS`.\n"
+echo -n "Download it again? [(y)es or (n)o]: "
+unset yesno1
+read yesno1
+case $yesno1 in
+y* | Y*)
+input1=y;;
+n* | N*)
+input1=n;;
+esac
+
+# if Y remove from list; download 
+if [ "$input1" = "y" ]; then
+grep -wv $Database $TMP-DBS_STATUS > $TMP
+cat $TMP > $TMP-DBS_STATUS
+DLD_PRG_COMMLINE4
+fi
+
+else # means is a 1st download
+DLD_PRG_COMMLINE4
+fi # end of if database is in status list
+
+fi
+done
+} # end DB_SELECT_DLD
+DB_SELECT_DLD
+
+done
+} # DBS_MENU_DLD
+
+DBS_FINALS () {
+if [ -s $TMP-DB_MASTER ]; then
+DBS_STATUS_FINAL
+if [ -s check-integrity ]; then
+cat $TMP-DB_MASTER > $COMMON_TMP/TMP-DB_MASTER
+./check-integrity DB_MASTER
+else
+if [ -s ../dat/external_databases ]; then
+mv -f ../dat/external_databases ../dat/external_databases.old
+fi
+cat $TMP-DB_MASTER > ../dat/external_databases
+clear
+echo -e ""$PNDD"\nDownloaded database is now at ../dat/external_databases\n
+Move it to your info2.db file by writing
+cat external_databases >> info2.db\n\n"
+fi
+fi
+}
+
+if [ "$1" = "-s" ]; then
+ENVIRONMENT
+TESTDEPEND_GO
+TESTDEPEND_SUBST
+GET_SERVER_URLS
+GET_DBS_INFO
+GET_DBS_VARS
+DBS_STATUS
+else
+ENVIRONMENT
+TESTDEPEND_GO
+TESTDEPEND_SUBST
+GET_SERVER_URLS
+GET_DBS_INFO
+GET_DBS_VARS
+DBS_MENU_DLD
+DBS_FINALS
+fi
