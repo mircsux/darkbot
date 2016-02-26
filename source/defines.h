@@ -807,6 +807,8 @@ bool;
 #define	RDB_ACTION				1
 #define	RDB_RAW					2
 
+#define	YES					1
+#define	NO					0
 /* ////////////////////////////////////////////////////////////////////// */
 
 #define RESERVED1           "EXPLAIN"

@@ -278,7 +278,7 @@ show_url (char *nick, char *topic, char *target, long donno, long floodpro, char
 			{
 				ptr++;
 				fclose (fp);
-				do_randomtopic (NORMALR, target, ptr, nick, topic);
+				do_randomtopic (NO, NORMALR, target, ptr, nick, topic);
 				return;
 			}
 			length = strlen (ptr);
@@ -516,13 +516,13 @@ show_url (char *nick, char *topic, char *target, long donno, long floodpro, char
 			}
 		}
 		if ((*target == '#') || (*target == '+') || (*target == '&'))
-#if     RANDOM_DUNNO == 1
-			do_randomtopic (DUNNOR, target, DUNNO_FILE, nick, topic);
+#if     RANDOM_DUNNO == ON
+			do_randomtopic (NO, DUNNOR, target, DUNNO_FILE, nick, topic);
 #else
 			S ("PRIVMSG %s :%s, %s\n", target, nick, DONNO_Q);
 #endif
 		else
-			S ("NOTICE %s :%s, %s\n", nick, nick, DONNO_Q);
+			do_randomtopic (YES, DUNNOR, target, DUNNO_FILE, nick, topic);
 	}
 }
 

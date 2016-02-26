@@ -1895,11 +1895,11 @@ chanserv (char *source, char *target, char *buf)
 #if RANDOM_WHUT == 1
 		else
 		{
-			do_randomtopic (WHUTR, target, WHUT_FILE, source, s);
+			do_randomtopic (NO, WHUTR, target, WHUT_FILE, source, s);
 		}
 #else
 		else
-			S ("PRIVMSG %s :%s\n", target, WHUT);
+			do_randomtopic (YES, WHUTR, target, WHUT_FILE, source, s);
 #endif
 
 #if GENERAL_QUESTIONS == 1

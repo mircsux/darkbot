@@ -18,7 +18,7 @@ void	show_seen				(char *, char *, char *),
 	show_info2				(const char *, const char *);
 
 long	save_seen				(char *, char *, char *);
-void	do_randomtopic				(int, char *, char *, char *, char *);
+void	do_randomtopic				(int, int, char *, char *, char *, char *);
 
 
 

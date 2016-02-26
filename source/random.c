@@ -146,7 +146,7 @@ void		do_random_stuff					(void)
 }
 #endif
 
-void	do_randomtopic	(int type, char *target, char *file, char *nick, char *topic)
+void	do_randomtopic	(int notice, int type, char *target, char *file, char *nick, char *topic)
 {
 	FILE		*fp = 0;
 	char		file2		[FILENAME_MAX] = {0};
@@ -182,13 +182,16 @@ void	do_randomtopic	(int type, char *target, char *file, char *nick, char *topic
 		// If this is a dunno, or whut response, instead we say our default reply.
 		if (type == NORMALR)
 		{
-			S("privmsg %s :Sorry, I cannot answer that topic because "
+			
+			S("%s %s :Sorry, I cannot answer that topic because "
 			  "darkbot random text file (rdb) \"%s\" was not found.\n",
-				target, file2);
+				(notice == YES) ? "NOTICE" : "PRIVSMG", target, file2);
 		}
 		else
 		{
-			S ("privmsg %s :%s\n", target, pDefault);
+			S ("%s %s :%s\n", 
+				(notice == YES) ? "NOTICE" : "PRIVSMG",
+				target, pDefault);
 		}
 
 		return;
@@ -348,7 +351,10 @@ void	do_randomtopic	(int type, char *target, char *file, char *nick, char *topic
 				break;
 
 			case RDB_NORMAL:
-				S ("privmsg %s :%s\n", target, Data);
+				if (notice == YES)
+					S("notice %s :%s\n", target, Data);
+				else
+					S ("privmsg %s :%s\n", target, Data);
 				break;
 
 			case RDB_RAW:
