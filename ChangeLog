@@ -4,6 +4,10 @@
     Support Forum: http://forum.darkbot.org
     *******************************************************
 
+Darkbot 8rc1: Feb 25, 2016
+ 	- Random DUNNO responses were being sent via msg. Changed this
+          so the bot responds via notice if it is messaged a question.
+          This was the original behavior.
 Darkbot 8rc1: Mar 04, 2005
 	- Removed an unneeded line in main.c, that was used to "hide"
 	  warnings on WIN32, which is a very bad idea.
