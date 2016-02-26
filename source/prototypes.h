@@ -7,7 +7,7 @@ void	parse_252				(char *),
 #endif
 
 #ifndef	WIN32
-	inline	size_t min			(const size_t, const size_t);
+size_t min			(const size_t, const size_t);
 #endif
 
 char	*db_strndup				(const char *, size_t);

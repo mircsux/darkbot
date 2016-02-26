@@ -522,7 +522,11 @@ show_url (char *nick, char *topic, char *target, long donno, long floodpro, char
 			S ("PRIVMSG %s :%s, %s\n", target, nick, DONNO_Q);
 #endif
 		else
+#if 	RANDOM_DUNNO == ON
 			do_randomtopic (YES, DUNNOR, target, DUNNO_FILE, nick, topic);
+#else	
+			S ("NOTICE %s :%s, %s\n", target, nick, DONNO_Q);
+#endif
 	}
 }
 
