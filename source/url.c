@@ -458,18 +458,14 @@ show_url (char *nick, char *topic, char *target, long donno, long floodpro, char
 					else
 					{
 						strncpy (temp, rand_reply (target), sizeof (temp));
-						S ("NOTICE %s :%s [%s] %s [sent by %s]\n", target, temp, topic, Data, nick);
-						S ("NOTICE %s :Messaged %s: \"%s [%s] %s [sent by %s]\"\n", nick, target,
-						   temp, topic, Data, nick);
+						S ("NOTICE %s :%s %s\n", target, temp, Data);
 					}
 				}
 				else if ((*target == '#') || (*target == '+') || (*target == '&'))
 					S ("PRIVMSG %s :\1ACTION %s\1\n", target, Data);
 				else
 				{
-					S ("NOTICE %s :[%s] %s [sent by %s]\n", target, topic, Data, nick);
-					S ("NOTICE %s :Messaged %s: \"[%s] %s [sent by %s]\"\n",
-					   nick, target, topic, Data, nick);
+					S ("NOTICE %s :%s\n", target, Data);
 				}
 			}
 			else if (A == 0)
@@ -480,9 +476,7 @@ show_url (char *nick, char *topic, char *target, long donno, long floodpro, char
 					S ("PRIVMSG %s :%s\n", target, Data);
 				else
 				{
-					S ("NOTICE %s :[%s] %s [sent by %s]\n", target, topic, Data, nick);
-					S ("NOTICE %s :Messaged %s: \"[%s] %s [sent by %s]\"\n",
-					   nick, target, topic, Data, nick);
+					S ("NOTICE %s :%s\n", target, Data);
 				}
 			}
 			else if ((*target == '#') || (*target == '+') || (*target == '&'))
