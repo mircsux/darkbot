@@ -37,8 +37,8 @@ server.o: server.c defines.h /usr/include/signal.h /usr/include/_ansi.h \
  /usr/include/sys/_default_fcntl.h /usr/include/sys/stat.h \
  /usr/include/cygwin/stat.h /usr/include/dirent.h \
  /usr/include/sys/dirent.h \
- /usr/lib/gcc/i686-pc-cygwin/5.3.0/include-fixed/limits.h \
- /usr/lib/gcc/i686-pc-cygwin/5.3.0/include-fixed/syslimits.h \
+ /usr/lib/gcc/i686-pc-cygwin/5.3.0/include/limits.h \
+ /usr/lib/gcc/i686-pc-cygwin/5.3.0/include/syslimits.h \
  /usr/include/limits.h vars.h prototypes.h
 
 defines.h:
@@ -205,9 +205,9 @@ langs/english.h:
 
 /usr/include/sys/dirent.h:
 
-/usr/lib/gcc/i686-pc-cygwin/5.3.0/include-fixed/limits.h:
+/usr/lib/gcc/i686-pc-cygwin/5.3.0/include/limits.h:
 
-/usr/lib/gcc/i686-pc-cygwin/5.3.0/include-fixed/syslimits.h:
+/usr/lib/gcc/i686-pc-cygwin/5.3.0/include/syslimits.h:
 
 /usr/include/limits.h:
 

@@ -52,10 +52,9 @@ S (const char *format, ...)
 	if (send_tog == 0)
 	{
 		send_tog = 1;
-		if (DebuG == 1)
-		{
-			printf ("OUT: %s\n", b);
-		}
+#ifdef	DEBUG
+		printf ("OUT: %s\n", b);
+#endif
 		writeln (b);
 		return;
 	}
