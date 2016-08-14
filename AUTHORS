@@ -15,8 +15,8 @@ Thanks to everyone for their contributions to this project.
 
 **** Coders ****
 
-Ron Robbins Jr. (ron) <ron@darkbot.org>
- * A plethora of changes, modifications, and bug fixes since version 6f6.
+Ron Robbins Jr. (ron) <rnrbbns1983 at gmail dot com>
+ * Changes, modifications, and bug fixes since version 6f6.
 Paul (reet2) <paul@darkbot.info>
  * Several major changes on 6f6 for release 7.  Added the quiz stuff, 
    and original google functionality.
@@ -91,9 +91,10 @@ Other Darkbot related projects
 Darkbot Commander - Alex99 <Alex99@darkbot.info>
 
 **** Helpers ****
-These are people who acknowledgedly colaborate with Darkbot Project
-	guidind and helping users trough their difficulties
-... by alpha order...
+These are people who acknowledgedly colaborated on the Darkbot Project 
+and/or made outstanding effort to help users with it it's operation.
+
+In alpha order...
 Alex99 Alex99@darkbot.info / @ undernet #darkbot
 Andre (Syntax6) Syntax6@darkbot.info / @ undernet #darkbot
 baphomet @ undernet #darkbot
@@ -104,13 +105,12 @@ Shaky @ undernet #darkbot
 TuEuR @ undernet #darkbot
 {SID_V} @ undernet #darkbot
 
-**** Special Donnations ****
+**** Special Donations ****
 Andre (Syntax6) Syntax6@darkbot.info 
  * has hosted Darkbot Web pages on his servers. 
    Has also donated DNS hosting for Darkbot domains.
 
-SourceForge, for hosting one of our mirrors, and giving us nifty
-stats and ratings about the project, that we can gawk at and admire.
+Github for hosting the new project location.
 
 LaZZ from www.chatcircuit.net for providing another one of our mirrors.
 Will (xiaodown) for providing the darkbot.org domain.
