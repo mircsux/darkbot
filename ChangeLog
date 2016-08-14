@@ -4,6 +4,10 @@
     Support Forum: http://forum.darkbot.org
     *******************************************************
 
+Darkbot 8rc1: Aug 13, 2016
+ 	- Removed the annoying "Messaged: so and so" messages that tell 
+ 	  people with higher access about the bot messaging people. I 
+ 	  feel it's unnecessay and it annoys me. 
 Darkbot 8rc1: Feb 25, 2016
  	- Random DUNNO responses were being sent via msg. Changed this
           so the bot responds via notice if it is messaged a question.
