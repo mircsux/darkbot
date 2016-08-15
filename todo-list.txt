@@ -1,2 +1,11 @@
 /* Darkbot Todo list */
 
+- Make google function work again.
+
+- Make topics use variable as well as topic replies so I can make
+  something like "hey+B~,+wassup blah blah", and you can make bot 
+  respond to it's own name no matter what nick it's using without
+  adding extra topics. Just example. Make all vars work.
+
+- Restructure chanserv() function. Badly needs done.
+
