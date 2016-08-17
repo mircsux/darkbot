@@ -1,5 +1,11 @@
 /* Darkbot Todo list */
 
+- Make randomstuff timers independent for each room the bot is in.
+
+- Improve database search speed, stuff like that. Maybe start 
+  sorting info2.db and decide which end of file to start 
+  scanning from by the letter the search starts with?? 
+
 - Make google function work again.
 
 - Improve statistics tracking.
