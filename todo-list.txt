@@ -1,5 +1,9 @@
 /* Darkbot Todo list */
 
+- After bot times out, it doesn't update internal channel list, 
+  so bot may think it's still on channels that it has joined 
+  before pinging out. 
+
 - Make randomstuff timers independent for each room the bot is in.
 
 - Improve database search speed, stuff like that. Maybe start 
