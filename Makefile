@@ -23,7 +23,7 @@ pkgincludedir = $(includedir)/darkbot
 top_builddir = .
 
 am__cd = CDPATH="$${ZSH_VERSION+.}$(PATH_SEPARATOR)" && cd
-INSTALL = /usr/bin/ginstall -c
+INSTALL = /usr/bin/install -c
 install_sh_DATA = $(install_sh) -c -m 644
 install_sh_PROGRAM = $(install_sh) -c
 install_sh_SCRIPT = $(install_sh) -c
@@ -35,13 +35,13 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-ACLOCAL = ${SHELL} /home/juice/darkbot8rc1/darkbot/missing --run aclocal-1.7
+ACLOCAL = ${SHELL} /home/ron/darkbot/missing --run aclocal-1.7
 AMDEP_FALSE = #
 AMDEP_TRUE = 
-AMTAR = ${SHELL} /home/juice/darkbot8rc1/darkbot/missing --run tar
-AUTOCONF = ${SHELL} /home/juice/darkbot8rc1/darkbot/missing --run autoconf
-AUTOHEADER = ${SHELL} /home/juice/darkbot8rc1/darkbot/missing --run autoheader
-AUTOMAKE = ${SHELL} /home/juice/darkbot8rc1/darkbot/missing --run automake-1.7
+AMTAR = ${SHELL} /home/ron/darkbot/missing --run tar
+AUTOCONF = ${SHELL} /home/ron/darkbot/missing --run autoconf
+AUTOHEADER = ${SHELL} /home/ron/darkbot/missing --run autoheader
+AUTOMAKE = ${SHELL} /home/ron/darkbot/missing --run automake-1.7
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
@@ -49,26 +49,26 @@ CFLAGS = -g -O2
 CP = /usr/bin/cp
 CPP = gcc -E
 CPPFLAGS = 
-CYGPATH_W = echo
+CYGPATH_W = cygpath -w
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
 ECHO_C = 
 ECHO_N = -n
 ECHO_T = 
 EGREP = grep -E
-EXEEXT = 
+EXEEXT = .exe
 INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = ${SHELL} $(install_sh) -c -s
 LDFLAGS = 
 LIBOBJS = 
-LIBS = -lcrypt 
+LIBS = -luser32 
 LTLIBOBJS = 
 MAINT = #
 MAINTAINER_MODE_FALSE = 
 MAINTAINER_MODE_TRUE = #
-MAKEINFO = ${SHELL} /home/juice/darkbot8rc1/darkbot/missing --run makeinfo
+MAKEINFO = ${SHELL} /home/ron/darkbot/missing --run makeinfo
 OBJEXT = o
 PACKAGE = darkbot
 PACKAGE_BUGREPORT = ron@darkbot.org
@@ -96,7 +96,7 @@ exec_prefix = ${prefix}
 host_alias = 
 includedir = ${prefix}/include
 infodir = ${prefix}/info
-install_sh = /home/juice/darkbot8rc1/darkbot/install-sh
+install_sh = /home/ron/darkbot/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localstatedir = ${prefix}/var
@@ -503,8 +503,8 @@ convertdb: source/convertdb$(EXEEXT)
 
 install-exec-local:
 	@echo
-	/usr/bin/ginstall -c -d -m 755 $(prefix)
-	/usr/bin/ginstall -c -m 744 ./source/darkbot $(prefix)
+	/usr/bin/install -c -d -m 755 $(prefix)
+	/usr/bin/install -c -m 744 ./source/darkbot $(prefix)
 	@echo 
 	@echo darkbot-`cat VERSION` has been installed to $(prefix)
 	@echo
