@@ -125,7 +125,7 @@ char g_host[STRING_SHORT] = { 0 };
 char Mynick[STRING_SHORT] = "darkbot";
 char sleep_chan[STRING_SHORT] = { 0 };
 char VHOST[STRING_SHORT] = "0";
-char REALNAME[STRING_SHORT] = "http://www.darkbot.org";
+char REALNAME[STRING_SHORT] = "http://github.com/mircsux/darkbot";
 char privmsg_log[STRING_SHORT] = { 0 };
 
 #define PBOT "ArchFiend"
