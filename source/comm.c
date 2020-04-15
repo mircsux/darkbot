@@ -445,6 +445,8 @@ register_bot (void)
 	strlwr (UID);
 	Snow ("USER %s %d %d :%s \2%d\2\n", UID, time (NULL), time (NULL), REALNAME, NUM_HELPER);
 	
-	if (BPASS != NULL)
-		Snow ("PASS :%s\n", BPASS);
+/*	if (BPASS != NULL)
+	Snow ("PASS :%s %s\n", Mynick, BPASS);
+*/
 }
+ 
