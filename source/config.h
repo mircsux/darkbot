@@ -21,10 +21,10 @@
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `crypt' library (-lcrypt). */
-#define HAVE_LIBCRYPT 1
+/* #undef HAVE_LIBCRYPT */
 
 /* Define to 1 if you have the `user32' library (-luser32). */
-/* #undef HAVE_LIBUSER32 */
+#define HAVE_LIBUSER32 1
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
@@ -116,7 +116,7 @@
 #define VERSION "7f3(dev)"
 
 /* windows.h */
-/* #undef WIN32 */
+#define WIN32 
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

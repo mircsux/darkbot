@@ -2,9 +2,9 @@
  ***	Darkbot (c) 2002
  *	The Internet Relay Chat Talking Robot
  * 
- ***	Darkbot Creator  -   Jason Hamilton (play) Jason@superlink.net
- *	Project Administrator  -   LuizCB (Pincel) LuizCB@darkbot.info
- *      Recent Code Modifications -     Ron (`ron) ron@darkbot.org
+ ***	 Darkbot Creator  -   Jason Hamilton (play) Jason@superlink.net
+ * Project Administrator  -   LuizCB (Pincel) LuizCB@darkbot.info
+ * Recent Modifications   -   Ron Robbins Jr. (ron) rnrbbns1983@gmail.com
  *
  *	Official Sites: http://www.darkbot.org 
  *	 		http://darkbot.sourceforge.net
