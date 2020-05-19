@@ -44,6 +44,7 @@ raw_now (char *type)
 	long i = 0, counter = 0;
 	char str[STRING_LONG] = { 0 }, *dat = NULL, *ptr = NULL, *tmp1 =
 		NULL, *tmp2 = NULL, *tmp3 = NULL;
+	char *ptr2 = NULL, *endptr = NULL;
 
 	if (stricmp (type, "PERMBAN") == 0)
 		if ((fp = fopen (PERMBAN, "r")) == NULL)
@@ -97,6 +98,16 @@ raw_now (char *type)
 				{
 					strncpy (CHAN, ptr, sizeof (CHAN));
 				}
+				else if (stricmp (dat, "RAND_STUFF_TIME") == 0)
+				{
+				  RAND_STUFF_TIME = atoi (ptr);
+				}
+				else if (stricmp (dat, "RAND_IDLE") == 0)
+				{
+				  RAND_IDLE = atoi (ptr);
+
+				}
+
 				else if (stricmp (dat, "SEEN") == 0)
 				{
 					SeeN = atoi (ptr);

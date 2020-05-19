@@ -34,6 +34,8 @@ bool quiz_answer = 0;
 bool quiz_halt = 0;
 char quiz_target[STRING_SHORT] = { 0 };
 long recent_questions[10] = { 0 };
+int RAND_STUFF_TIME = 0;
+int RAND_IDLE = 0;
 
 #ifdef	RANDOM_STUFF
 long Rand_Stuff = 0;

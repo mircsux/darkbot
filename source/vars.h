@@ -34,6 +34,8 @@ extern long Sleep_Time;
 extern long AIL3;
 extern long AIL2;
 extern long AIL5;
+extern int RAND_IDLE;
+extern int RAND_STUFF_TIME;
 extern long JOINs;
 extern long PERMBAN_counter;
 extern long	RAND_CHANS;

@@ -95,9 +95,6 @@ main (int argc, char **argv)
 		exit (0);
 #endif
 #endif
-#ifdef	RANDOM_STUFF
-	get_rand_stuff_time ();
-#endif
 
 	printf ("\n\n\n");
 	printf ("  * * * * * * * * Darkbot (c) 2004 v8 Release Candidate 1 * * * * * * * * *  \n");
@@ -146,6 +143,11 @@ main (int argc, char **argv)
 #ifndef	WIN32
 #endif
 	alarm (AIL);
+
+#ifdef	RANDOM_STUFF
+	get_rand_stuff_time ();
+#endif
+
 	prepare_bot ();
 	register_bot ();
 

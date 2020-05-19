@@ -417,19 +417,6 @@
 #define	RANDOM_STUFF
 
 /*
- * Time in seconds to randomly say something
- * from randomstuff.ini (default = 3600 (1 hour))
- */
-#define	RAND_STUFF_TIME	3600
-
-/*
- * Time in secs to say something in home chan when no
- * one says anything. This overrides the RAND_STUFF_TIME
- * counter. (default = 1800 (30 minutes))
- */
-#define RAND_IDLE	1800
-
-/*
  * Level at which user's can on-line add new
  * randomstuff topics, this also is the level at which
  * users will be able to add RDB topics (default = 2)
