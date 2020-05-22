@@ -162,6 +162,39 @@ save_setup (void)
 	db_log (TMP_FILE, "REALNAME=%s\n", REALNAME);
 	db_log (TMP_FILE, "CMDCHAR=%c\n", *CMDCHAR);
 	db_log (TMP_FILE, "SEEN=%d\n", SeeN);
+	db_log (TMP_FILE, "# Autotopic time interval in seconds\n# (default = 1800 (30 minutes))\n");
+	db_log (TMP_FILE, "AUOTOPIC_TIME=%d\n", AUTOTOPIC_TIME);
+	db_log (TMP_FILE, "# Level at which user's can on-line add new\n" \
+                          "# randomstuff topics, this also is the level at which\n" \
+			  "# users will be able to add RDB topics (default = 2)\n");
+	db_log (TMP_FILE, "RAND_LEVEL=%d\n", RAND_LEVEL);
+	db_log (TMP_FILE, "# Time in seconds to randomly say something\n" \
+			  "# from randomstuff.ini (default = 3600 (1 hour))\n");
+	db_log (TMP_FILE, "RAND_STUFF_TIME=%d\n", RAND_STUFF_TIME);
+	db_log (TMP_FILE, 
+		"# Check if servers are not responding, if so\n" \
+		"# connect to next server in list. (recommended)\n" \
+		"# Some linux systems have problems with this.\n" \
+		"# You'll know if you're one of them if your bot\n" \
+		"# disconnects every 5 minutes.\n" \
+		"# ALSO NOTE: If your bot seems to disconnect every 5\n" \
+                "# minutes, try turning off the CHECK_STONED code.\n");
+	db_log (TMP_FILE, "CHECK_STONED=%d\n", CHECK_STONED);
+	db_log (TMP_FILE, "# This is how long the bot will wait for a connection\n" \
+		"# to the server, before trying the next server. You may need\n" \
+		"# to increase this if you are on a slow connection.\n");
+	db_log (TMP_FILE, "CONNECT_WAIT_TIMEOUT=%d\n", CONNECT_WAIT_TIMEOUT);
+	db_log (TMP_FILE, "# ** SLEEP DIRECTIVES ==== **\n" \
+		"# Level at which user's can make darkbot shut up\n" \
+		"# (aka hush). This is useful for help channels when\n" \
+		"# they want darkbot to quit talking while they address\n" \
+		"# something important in the chan (default = 3)\n");
+	db_log (TMP_FILE, "SLEEP_LEVEL=%d\n", SLEEP_LEVEL);
+	db_log (TMP_FILE, "# How many seconds to sleep for? (default = 300 (5 minutes))\n");
+	db_log (TMP_FILE, "SLEEP_TIME=%d\n", SLEEP_TIME);
+
+
+
 	rename (TMP_FILE, SETUP);
 }
 

@@ -46,6 +46,7 @@ long Rand_Stuff = 0;
 int RAND_STUFF_TIME = 0;
 int RAND_IDLE = 0;
 int RAND_LEVEL = 2;
+int AUTOTOPIC_TIME = 1800;
 
 #endif
 long AIL4 = 0;

@@ -479,12 +479,6 @@
  */
 #define DO_CHANBOT_CRAP ON
 
-/*
- * Autotopic time interval in seconds
- * (default = 1800 (30 minutes))
- */
-#define	AUTOTOPIC_TIME	1800
-
 /* ==== KICKS AND BANS ==== */
 
 /*

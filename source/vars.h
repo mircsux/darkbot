@@ -40,6 +40,7 @@ extern int RAND_STUFF_TIME;
 extern int CONNECT_WAIT_TIMEOUT;
 extern int SLEEP_LEVEL;
 extern int SLEEP_TIME;
+extern int AUTOTOPIC_TIME;
 extern long JOINs;
 extern long PERMBAN_counter;
 extern long	RAND_CHANS;
