@@ -55,8 +55,9 @@ DEPDIR = .deps
 ECHO_C = 
 ECHO_N = -n
 ECHO_T = 
-EGREP = grep -E
+EGREP = /usr/bin/grep -E
 EXEEXT = .exe
+GREP = /usr/bin/grep
 INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
@@ -71,19 +72,19 @@ MAINTAINER_MODE_TRUE = #
 MAKEINFO = ${SHELL} /home/Ronald/darkbot/missing --run makeinfo
 OBJEXT = o
 PACKAGE = darkbot
-PACKAGE_BUGREPORT = ron@darkbot.org
+PACKAGE_BUGREPORT = rnrbbns1983@gmail.com
 PACKAGE_NAME = Darkbot
-PACKAGE_STRING = Darkbot 8rc1
+PACKAGE_STRING = Darkbot 8rc2
 PACKAGE_TARNAME = darkbot
-PACKAGE_VERSION = 8rc1
+PACKAGE_URL = 
+PACKAGE_VERSION = 8rc2
 PATH_SEPARATOR = :
 RM = /usr/bin/rm
 SET_MAKE = 
 SHELL = /bin/sh
 STRIP = 
-VERSION = 7f3(dev)
+VERSION = 8rc2
 ac_ct_CC = gcc
-ac_ct_STRIP = 
 am__fastdepCC_FALSE = #
 am__fastdepCC_TRUE = 
 am__include = include
@@ -91,19 +92,27 @@ am__leading_dot = .
 am__quote = 
 bindir = ${exec_prefix}/bin
 build_alias = 
-datadir = ${prefix}/share
+datadir = ${datarootdir}
+datarootdir = ${prefix}/share
+docdir = ${datarootdir}/doc/${PACKAGE_TARNAME}
+dvidir = ${docdir}
 exec_prefix = ${prefix}
 host_alias = 
+htmldir = ${docdir}
 includedir = ${prefix}/include
-infodir = ${prefix}/info
+infodir = ${datarootdir}/info
 install_sh = /home/Ronald/darkbot/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
+localedir = ${datarootdir}/locale
 localstatedir = ${prefix}/var
-mandir = ${prefix}/man
+mandir = ${datarootdir}/man
 oldincludedir = /usr/include
+pdfdir = ${docdir}
 prefix = ${HOME}/darkbot
 program_transform_name = s,x,x,
+psdir = ${docdir}
+runstatedir = ${localstatedir}/run
 sbindir = ${exec_prefix}/sbin
 sharedstatedir = ${prefix}/com
 sysconfdir = ${prefix}/etc
@@ -114,10 +123,10 @@ EXTRA_PROGRAMS = convertdb
 
 AM_CFLAGS = -DFORK
 
-darkbot_SOURCES = chan.c general.c permbans.c reserved.c sockets.c \
-                  users.c chansrv.c helpers.c quiz.c seen.c stats.c \
-                  vars.c comm.c main.c random.c server.c topics.c web.c \
-                  parse.c raw.c signals.c url.c
+darkbot_SOURCES = chan.c chansrv.c comm.c general.c helpers.c main.c \
+                  parse.c permbans.c quiz.c random.c raw.c reserved.c \
+                  seen.c server.c signals.c sockets.c stats.c topics.c \
+                  url.c users.c vars.c web.c 
 
 
 convertdb_SOURCES = convertdb.c
@@ -135,13 +144,13 @@ convertdb_OBJECTS = $(am_convertdb_OBJECTS)
 convertdb_LDADD = $(LDADD)
 convertdb_DEPENDENCIES =
 convertdb_LDFLAGS =
-am_darkbot_OBJECTS = chan.$(OBJEXT) general.$(OBJEXT) permbans.$(OBJEXT) \
-	reserved.$(OBJEXT) sockets.$(OBJEXT) users.$(OBJEXT) \
-	chansrv.$(OBJEXT) helpers.$(OBJEXT) quiz.$(OBJEXT) \
-	seen.$(OBJEXT) stats.$(OBJEXT) vars.$(OBJEXT) comm.$(OBJEXT) \
-	main.$(OBJEXT) random.$(OBJEXT) server.$(OBJEXT) \
-	topics.$(OBJEXT) web.$(OBJEXT) parse.$(OBJEXT) raw.$(OBJEXT) \
-	signals.$(OBJEXT) url.$(OBJEXT)
+am_darkbot_OBJECTS = chan.$(OBJEXT) chansrv.$(OBJEXT) comm.$(OBJEXT) \
+	general.$(OBJEXT) helpers.$(OBJEXT) main.$(OBJEXT) \
+	parse.$(OBJEXT) permbans.$(OBJEXT) quiz.$(OBJEXT) \
+	random.$(OBJEXT) raw.$(OBJEXT) reserved.$(OBJEXT) \
+	seen.$(OBJEXT) server.$(OBJEXT) signals.$(OBJEXT) \
+	sockets.$(OBJEXT) stats.$(OBJEXT) topics.$(OBJEXT) \
+	url.$(OBJEXT) users.$(OBJEXT) vars.$(OBJEXT) web.$(OBJEXT)
 darkbot_OBJECTS = $(am_darkbot_OBJECTS)
 darkbot_LDADD = $(LDADD)
 darkbot_DEPENDENCIES =

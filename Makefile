@@ -55,8 +55,9 @@ DEPDIR = .deps
 ECHO_C = 
 ECHO_N = -n
 ECHO_T = 
-EGREP = grep -E
+EGREP = /usr/bin/grep -E
 EXEEXT = .exe
+GREP = /usr/bin/grep
 INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
@@ -71,19 +72,19 @@ MAINTAINER_MODE_TRUE = #
 MAKEINFO = ${SHELL} /home/Ronald/darkbot/missing --run makeinfo
 OBJEXT = o
 PACKAGE = darkbot
-PACKAGE_BUGREPORT = ron@darkbot.org
+PACKAGE_BUGREPORT = rnrbbns1983@gmail.com
 PACKAGE_NAME = Darkbot
-PACKAGE_STRING = Darkbot 8rc1
+PACKAGE_STRING = Darkbot 8rc2
 PACKAGE_TARNAME = darkbot
-PACKAGE_VERSION = 8rc1
+PACKAGE_URL = 
+PACKAGE_VERSION = 8rc2
 PATH_SEPARATOR = :
 RM = /usr/bin/rm
 SET_MAKE = 
 SHELL = /bin/sh
 STRIP = 
-VERSION = 7f3(dev)
+VERSION = 8rc2
 ac_ct_CC = gcc
-ac_ct_STRIP = 
 am__fastdepCC_FALSE = #
 am__fastdepCC_TRUE = 
 am__include = include
@@ -91,19 +92,27 @@ am__leading_dot = .
 am__quote = 
 bindir = ${exec_prefix}/bin
 build_alias = 
-datadir = ${prefix}/share
+datadir = ${datarootdir}
+datarootdir = ${prefix}/share
+docdir = ${datarootdir}/doc/${PACKAGE_TARNAME}
+dvidir = ${docdir}
 exec_prefix = ${prefix}
 host_alias = 
+htmldir = ${docdir}
 includedir = ${prefix}/include
-infodir = ${prefix}/info
+infodir = ${datarootdir}/info
 install_sh = /home/Ronald/darkbot/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
+localedir = ${datarootdir}/locale
 localstatedir = ${prefix}/var
-mandir = ${prefix}/man
+mandir = ${datarootdir}/man
 oldincludedir = /usr/include
+pdfdir = ${docdir}
 prefix = ${HOME}/darkbot
 program_transform_name = s,x,x,
+psdir = ${docdir}
+runstatedir = ${localstatedir}/run
 sbindir = ${exec_prefix}/sbin
 sharedstatedir = ${prefix}/com
 sysconfdir = ${prefix}/etc
@@ -125,7 +134,7 @@ RECURSIVE_TARGETS = info-recursive dvi-recursive pdf-recursive \
 	installdirs-recursive install-recursive uninstall-recursive \
 	check-recursive installcheck-recursive
 DIST_COMMON = README $(srcdir)/Makefile.in $(srcdir)/configure AUTHORS \
-	COPYING ChangeLog INSTALL Makefile.am NEWS aclocal.m4 \
+	COPYING ChangeLog INSTALL Makefile.am NEWS TODO aclocal.m4 \
 	config.guess config.sub configure configure.ac depcomp \
 	install-sh missing mkinstalldirs
 all: all-recursive

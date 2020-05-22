@@ -121,7 +121,6 @@ target_alias = @target_alias@
 EXTRA_DIST = scripts/* docs/* dat/* source/langs/* Makefile source/Makefile
 SUBDIRS = source
 DIST_SUBDIRS = source 
-SOURCES = chan.c chansrv.c
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -138,8 +137,6 @@ DIST_COMMON = README $(srcdir)/Makefile.in $(srcdir)/configure AUTHORS \
 	COPYING ChangeLog INSTALL Makefile.am NEWS TODO aclocal.m4 \
 	config.guess config.sub configure configure.ac depcomp \
 	install-sh missing mkinstalldirs
-SOURCES = chan.c chansrv.c
-
 all: all-recursive
 
 .SUFFIXES:

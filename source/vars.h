@@ -34,6 +34,7 @@ extern long Sleep_Time;
 extern long AIL3;
 extern long AIL2;
 extern long AIL5;
+extern int RAND_LEVEL;
 extern int RAND_IDLE;
 extern int RAND_STUFF_TIME;
 extern int CONNECT_WAIT_TIMEOUT;

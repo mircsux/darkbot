@@ -109,6 +109,14 @@ raw_now (char *type)
 					RAND_IDLE = 1800;
 
 				}
+				else if (stricmp (dat, "RAND_LEVEL") == 0)
+				{
+				  if ((RAND_LEVEL = atoi (ptr)) == 0)
+				  {
+					/* Default to level 1 if no choice. */
+					RAND_LEVEL = 1;
+				  }
+				}
 
 				else if (stricmp (dat, "SEEN") == 0)
 				{

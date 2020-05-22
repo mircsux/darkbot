@@ -6,7 +6,7 @@ dnl ---------------------------------
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([Darkbot],[8rc2],[ron@darkbot.org])
+AC_INIT([Darkbot],[8rc2],[rnrbbns1983@gmail.com])
 AC_COPYRIGHT([Copyright (C) 2004 Darkbot Development Team])
 AC_REVISION($Revision: 1.9 $)
 AC_CONFIG_SRCDIR(source/defines.h)

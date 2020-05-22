@@ -12,9 +12,9 @@ AM_CFLAGS = -DFORK
 ## Uncomment this line to compile on Solaris.
 ## AM_LIBS = -lcrypt -lsocket -lnsl -lresolv
 
-darkbot_SOURCES = chan.c general.c permbans.c reserved.c sockets.c \
-                  users.c chansrv.c helpers.c quiz.c seen.c stats.c \
-                  vars.c comm.c main.c random.c server.c topics.c web.c \
-                  parse.c raw.c signals.c url.c
-
+darkbot_SOURCES = chan.c chansrv.c comm.c general.c helpers.c main.c \
+                  parse.c permbans.c quiz.c random.c raw.c reserved.c \
+                  seen.c server.c signals.c sockets.c stats.c topics.c \
+                  url.c users.c vars.c web.c 
+                  
 convertdb_SOURCES = convertdb.c

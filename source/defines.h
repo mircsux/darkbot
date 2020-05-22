@@ -383,13 +383,6 @@
 #define	RANDOM_STUFF
 
 /*
- * Level at which user's can on-line add new
- * randomstuff topics, this also is the level at which
- * users will be able to add RDB topics (default = 2)
- */
-#define	RAND_LEVEL 2
-
-/*
  * This is a new feature which enables the RANDQ
  * channel command, which will output a random
  * quote from your randomstuff.ini containing the

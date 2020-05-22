@@ -45,6 +45,8 @@ long Rand_Idle = 0;
 long Rand_Stuff = 0;
 int RAND_STUFF_TIME = 0;
 int RAND_IDLE = 0;
+int RAND_LEVEL = 2;
+
 #endif
 long AIL4 = 0;
 long Sleep_Toggle = 0;
@@ -90,9 +92,9 @@ long slcn4 = 0;
 long slcn3 = 0;
 
 #ifdef	WIN32
-char *rp391 = "niW-1cr8 tobkraD";
+char *rp391 = "niW-2cr8 tobkraD";
 #else
-char *rp391 = "1cr8 tobkraD";
+char *rp391 = "2cr8 tobkraD";
 #endif
 char BCOLON_NICK[STRING_SHORT] = { 0 };
 char DARKBOT_BIN[STRING_SHORT] = { 0 };
