@@ -100,11 +100,13 @@ raw_now (char *type)
 				}
 				else if (stricmp (dat, "RAND_STUFF_TIME") == 0)
 				{
-				  RAND_STUFF_TIME = atoi (ptr);
+				  if ((RAND_STUFF_TIME = atoi (ptr)) == 0)
+					RAND_STUFF_TIME = 3600;
 				}
 				else if (stricmp (dat, "RAND_IDLE") == 0)
 				{
-				  RAND_IDLE = atoi (ptr);
+			          if ((RAND_IDLE = atoi (ptr)) == 0)
+					RAND_IDLE = 1800;
 
 				}
 
@@ -124,6 +126,16 @@ raw_now (char *type)
 				{
 					*CMDCHAR = *ptr;
 				}
+				else if  (stricmp (dat, "CHECK_STONED") == 0)
+				{
+				  CHECK_STONED = *ptr;
+				}
+ 				else if (stricmp (dat, "CONNECT_WAIT_TIMEOUT") == 0)
+				{
+				  if ((CONNECT_WAIT_TIMEOUT = atoi (ptr)) == 0)
+					CONNECT_WAIT_TIMEOUT = 10;
+				}
+
 			}
 #ifdef	VERB
 			printf ("   - botnick(%s),", Mynick);

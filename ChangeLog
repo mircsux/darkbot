@@ -4,6 +4,9 @@
     Support Forum: http://forum.darkbot.org
     *******************************************************
 
+Darkbot 8rc2: May 21, 2020
+         - Moved some things out of defines.h into setup.ini. Will continue
+           do this and put many over those things over there.
 Darkbot 8rc1: Aug 14, 2016
 	- Various minor changes to some document files, spelling and grammar
 	  corrections. 

@@ -32,10 +32,12 @@ long quiz_timer = 0;
 long quiz_line = 0;
 bool quiz_answer = 0;
 bool quiz_halt = 0;
+char CHECK_STONED = 1;
 char quiz_target[STRING_SHORT] = { 0 };
 long recent_questions[10] = { 0 };
 int RAND_STUFF_TIME = 0;
 int RAND_IDLE = 0;
+int CONNECT_WAIT_TIMEOUT = 10;
 
 #ifdef	RANDOM_STUFF
 long Rand_Stuff = 0;

@@ -106,25 +106,6 @@
  */
 #define	VERB
 
-/*
- * Check if servers are not responding, is so
- * connect to next server in list. (recommended)
- * Some linux systems have problems with this.
- * You'll know if you're one of them if your bot
- * disconnects every 5 minutes.
- *
- * ALSO NOTE: If your bot seems to disconnect every 5 minutes, try
- * turning off the CHECK_STONED code.
- */
-#define	CHECK_STONED ON
-
-/*
- * This is the time that darkbot will wait for a connection
- * to the server, before trying the next server. You may need
- * to increase this if you are on a slow connection. 
- */
-#define CONNECT_WAIT_TIMEOUT 10
-
 /* ==== ON CONNECTED - IRC ==== */
 /*
  * Send everything that's in PERFORM.INI
