@@ -35,13 +35,16 @@ bool quiz_halt = 0;
 char CHECK_STONED = 1;
 char quiz_target[STRING_SHORT] = { 0 };
 long recent_questions[10] = { 0 };
-int RAND_STUFF_TIME = 0;
-int RAND_IDLE = 0;
+/* Setup.ini stuff */
 int CONNECT_WAIT_TIMEOUT = 10;
+int SLEEP_LEVEL = 3;
+int SLEEP_TIME = 300;
 
 #ifdef	RANDOM_STUFF
-long Rand_Stuff = 0;
 long Rand_Idle = 0;
+long Rand_Stuff = 0;
+int RAND_STUFF_TIME = 0;
+int RAND_IDLE = 0;
 #endif
 long AIL4 = 0;
 long Sleep_Toggle = 0;

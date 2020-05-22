@@ -232,21 +232,6 @@
  * (default = ON)
  */
 #define LOG_PRIVMSG ON
-
-/* ==== SLEEP DIRECTIVES ==== */
-/*
- * Level at which user's can make darkbot shut up
- * (aka hush). This is useful for help channels when
- * they want darkbot to quit talking while they address
- * something important in the chan (default = 3)
- */
-#define	SLEEP_LEVEL	3
-
-/*
- * How many seconds to sleep for? (default = 300 (5 minutes)) 
- */
-#define	SLEEP_TIME	300
-
 /*
  * What you would want your Darkbot to say when sleep and
  * wake up commands are issued? (If you want you can change

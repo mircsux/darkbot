@@ -135,6 +135,16 @@ raw_now (char *type)
 				  if ((CONNECT_WAIT_TIMEOUT = atoi (ptr)) == 0)
 					CONNECT_WAIT_TIMEOUT = 10;
 				}
+				else if (stricmp (dat, "SLEEP_LEVEL") == 0)
+				{
+				  if ((SLEEP_LEVEL = atoi (ptr)) == 0)
+                                         SLEEP_LEVEL = 3;
+				}
+				else if (stricmp (dat, "SLEEP_TIME") == 0)
+				{
+			          if ((SLEEP_TIME = atoi (ptr)) == 0)
+					 SLEEP_TIME = 300;
+				}
 
 			}
 #ifdef	VERB
